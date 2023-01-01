@@ -1,0 +1,4 @@
+(sym_lib_table
+  (lib (name "zxbus")(type "Legacy")(uri "${KIPRJMOD}/zxbus.lib")(options "")(descr ""))
+  (lib (name "rp-pico")(type "Legacy")(uri "${KIPRJMOD}/rp-pico.lib")(options "")(descr ""))
+)
