@@ -1,0 +1,89 @@
+Project to get a Pico emulating a ROM on the Spectrum
+=====================================================
+
+Timing
+======
+
+Timing is based on a Z80 read, the ULA isn't involved. Pg8 of the Z80 manual says
+that the timing for M1, the instruction fetch, is most time critical. The data is
+sampled off the bus one and a half clocks after MREQ goes low. On the 3.5MHz Z80
+that's 4.28571428571e-07 seconds. That's about 430ns.
+
+For non-M1 accesses, timing is slower:
+
+"Figure 6 shows the timing of memory read or write cycles other than an op code fetch
+cycle. These cycles are generally three clock periods long unless wait states are requested
+by memory through the WAIT signal."
+
+The Interface2 doesn't use a WAIT signal, so the ROM needs to respond with data within the
+expected timeframe, which is 3 clocks which is 8.57142857143e-07. That's 850ns.
+
+430ns is therefore the requirement, and the Pico can do that quite easily.
+
+This should be provable on a breadboard.
+
+
+Signals
+=======
+
+The Interface 2 circuit is here:
+
+http://www.fruitcake.plus.com/Sinclair/Interface2/Interface/Interface2_Circuitry.htm
+
+It's got 16 address lines (inputs), 8 data lines (outputs) and the MREQ line (input).
+It requires A14, A15 and MREQ to all go low to indicate a ROM (lower 16K) access.
+
+The ROMCS (ROM Chip Select) line is permanently held high so the ZX ROM is permanently
+disabled while the interface is plugged in.
+
+The data bus GPIOs need to be left as inputs until a value is to be placed on them.
+This is to allow other devices to use the Z80's data bus.
+
+
+Pico Design
+===========
+
+Pico is GPIO constrained. It requires A0 to A15 as inputs, and D0 to D7 as outputs.
+MREQ and RD will show that it's a memory access.
+
+So I need 2 control lines, 16 address lines and 8 data lines. That's 26 lines. Bit
+tight, but possible.
+
+If /MREQ is low it's a memory access; if A14 and A15 are also low it's a memory
+access of the lower 16K, the ROM. If the /RD line is also low it's a read of
+the ROM, which is what I'm after. That's a 4 way OR, or maybe a 3 way OR plus
+another 2 way OR. If I do this in discrete logic I'll free up some GPIOs.
+
+I don't really want to have to have the Pico switching the output level shifter on.
+It can do so, but it's another complication. So the design is to take the output
+of the above described logic and use that to turn the level shifter on. When the
+Z80 indicates it's doing a read from ROM, the active-low signal confirming that
+can be used a /CE for the output level shifter.
+
+*** Rethink for v1.1. That level shifter isn't actually required. The 8 data bus
+values are set on 8 of the picos GPIOs. Those go into a level shifter, which is
+permanently set to be B->A direction. so the 3V3 signal for each bit goes through
+the level shifter and comes out as 3V3, which is fed back onto the spectrum's data
+bus. The level shifter has done nothing! I do have the "feature" that turning that
+level shifter on and off controls when the pico is driving the data bus, but
+that's no huge benefit. The pico can set those GPIOs to inputs when it's not
+outputing a data byte. I should remove that level shifter for v1.1.
+
+I need to watch for a write to the ROM. In theory nothing will do that. I can use
+it as a way for the Spectrum to communicate with the Pico. If I pass the output
+of the discrete logic into the Pico it will be able to tell when ROM is being
+accessed. If I pass in the /WR signal as well it will be able to tell if it's
+being written to. This will allow POKE 0,?? to switch ROM. But that will crash
+the Z80 so LD 0,???; JP 0 would be required. Unless the Pico can reset the Z80?
+I don't think I have another level shifter port. Oh, maybe add a reset button
+which yanks the RESET line, then the POKE and a manual press would do it?
+
+
+Extra Ideas
+===========
+
+Probably need a timer circuit on /RESET to hold the Spectrum in reset until the
+Pico has booted. *** That will need the redundant level shifter.
+
+Need a way to get the Pico back to ROM0 (the Spectrum ROM). A power cycle will
+do it, but a reset button might be useful.
