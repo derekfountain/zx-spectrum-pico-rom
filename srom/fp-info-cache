@@ -1,4 +1,4 @@
-20874024397454678
+20893571512646806
 Audio_Module
 Reverb_BTDR-1H
 Digital Reverberation Unit, http://www.belton.co.kr/inc/downfile.php?seq=17&file=pdf (footprint from http://www.uk-electronic.de/PDF/BTDR-1.pdf)
@@ -58491,6 +58491,27 @@ Yellow 5381 Series LED
 0
 2
 2
+MCU_RaspberryPi_and_Boards
+Crystal_SMD_HC49-US
+SMD Crystal HC-49-SD http://cdn-reichelt.de/documents/datenblatt/B400/xxx-HC49-SMD.pdf, 11.4x4.7mm^2 package
+SMD SMT crystal
+0
+2
+2
+MCU_RaspberryPi_and_Boards
+RP2040-QFN-56
+QFN, 56 Pin (http://www.cypress.com/file/416486/download#page=40), generated with kicad-footprint-generator ipc_dfn_qfn_generator.py
+QFN DFN_QFN
+0
+70
+57
+MCU_RaspberryPi_and_Boards
+RPi_Pico_SMD_TH
+Through hole straight pin header, 2x20, 2.54mm pitch, double rows
+Through hole pin header THT 2x20 2.54mm double row
+0
+86
+43
 Module
 A20_OLINUXINO_LIME2
 A20 Olinuxino LIME2, 1.2GHz, 512-1024MB RAM, Micro-SD, NAND or eMMC, 1000Mbit Ethernet
@@ -87422,3 +87443,66 @@ varistor
 0
 2
 2
+pico-foot
+Crystal_SMD_HC49-US
+SMD Crystal HC-49-SD http://cdn-reichelt.de/documents/datenblatt/B400/xxx-HC49-SMD.pdf, 11.4x4.7mm^2 package
+SMD SMT crystal
+0
+2
+2
+pico-foot
+RP2040-QFN-56
+QFN, 56 Pin (http://www.cypress.com/file/416486/download#page=40), generated with kicad-footprint-generator ipc_dfn_qfn_generator.py
+QFN DFN_QFN
+0
+70
+57
+pico-foot
+RPi_Pico_SMD_TH
+Through hole straight pin header, 2x20, 2.54mm pitch, double rows
+Through hole pin header THT 2x20 2.54mm double row
+0
+86
+43
+zxbus
+NemoBus_Edge_Connector
+
+
+0
+60
+60
+zxbus
+NemoBus_SL62_Slot
+
+
+0
+62
+62
+zxbus
+ZX_Bus_Edge_Connector
+
+
+0
+54
+54
+zxbus
+ZX_Bus_Pin_Header
+
+
+0
+56
+54
+zxbus
+ZX_Bus_Soviet_2.5mm
+
+
+0
+54
+54
+zxedge
+Spectrum_Edge_Connector
+40 pins through hole IDC header
+IDC header socket VASCH
+0
+54
+54
