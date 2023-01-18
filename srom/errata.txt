@@ -1,0 +1,19 @@
+1.0
+===
+
+The footprint for the SN74LVC245ANSR is wrong. The data sheet says 
+
+SOIC (20) 12.80 mm × 7.50 mm
+
+so I used the SOIC-20W_7.5x12.8mm_P1.27mm one. But there's a
+discrepancy; the footprint is 7.5mm across the body of the device,
+the datasheet says that distance is across the pins. The body of
+the device is 5.00mm to 5.6mm according to the datasheet (which
+it is). There isn't a non-wide version of that footprint in the
+KiCAD libs. The one to use appears to be the SO-20_5.3x12.6mm_P1.27mm
+one.
+
+
+The footprint for the Pico's schottky diode is wrong. I copied AM's
+circuit where he's used a SOD323 footprint. The diodes I bought are
+3216 sized, and so too big.

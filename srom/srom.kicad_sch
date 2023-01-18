@@ -6,7 +6,8 @@
 
   (title_block
     (title "ZX Spectrum Pico ROM")
-    (date "2023-01-01")
+    (date "2023-01-18")
+    (rev "1.1")
   )
 
   (lib_symbols
@@ -1418,7 +1419,6 @@
     )
   )
 
-
   (junction (at 25.4 127) (diameter 0) (color 0 0 0 0)
     (uuid 159e5b3a-362d-4eec-a7fe-ee6959320994)
   )
@@ -2730,7 +2730,7 @@
     (property "Value" "74LS245" (id 1) (at 60.4394 118.11 0)
       (effects (font (size 1.27 1.27)) (justify left))
     )
-    (property "Footprint" "Package_SO:SOIC-20W_7.5x12.8mm_P1.27mm" (id 2) (at 58.42 135.89 0)
+    (property "Footprint" "Package_SO:SO-20_5.3x12.6mm_P1.27mm" (id 2) (at 58.42 135.89 0)
       (effects (font (size 1.27 1.27)) hide)
     )
     (property "Datasheet" "http://www.ti.com/lit/gpn/sn74LS245" (id 3) (at 58.42 135.89 0)
@@ -2995,7 +2995,7 @@
     (property "Value" "74LS245" (id 1) (at 132.8294 83.82 0)
       (effects (font (size 1.27 1.27)) (justify left))
     )
-    (property "Footprint" "Package_SO:SOIC-20W_7.5x12.8mm_P1.27mm" (id 2) (at 130.81 101.6 0)
+    (property "Footprint" "Package_SO:SO-20_5.3x12.6mm_P1.27mm" (id 2) (at 130.81 101.6 0)
       (effects (font (size 1.27 1.27)) hide)
     )
     (property "Datasheet" "http://www.ti.com/lit/gpn/sn74LS245" (id 3) (at 130.81 101.6 0)
@@ -3080,7 +3080,7 @@
     (property "Value" "74LS245" (id 1) (at 132.8294 144.78 0)
       (effects (font (size 1.27 1.27)) (justify left))
     )
-    (property "Footprint" "Package_SO:SOIC-20W_7.5x12.8mm_P1.27mm" (id 2) (at 130.81 162.56 0)
+    (property "Footprint" "Package_SO:SO-20_5.3x12.6mm_P1.27mm" (id 2) (at 130.81 162.56 0)
       (effects (font (size 1.27 1.27)) hide)
     )
     (property "Datasheet" "http://www.ti.com/lit/gpn/sn74LS245" (id 3) (at 130.81 162.56 0)
@@ -3366,7 +3366,7 @@
     (uuid 986f0686-4dd2-4d11-a20b-857347ffd112)
     (property "Reference" "D1" (id 0) (at 264.16 26.2382 0))
     (property "Value" "D_Schottky" (id 1) (at 264.16 28.5496 0))
-    (property "Footprint" "Diode_SMD:D_SOD-323_HandSoldering" (id 2) (at 264.16 31.75 0)
+    (property "Footprint" "Diode_SMD:D_1206_3216Metric_Pad1.42x1.75mm_HandSolder" (id 2) (at 264.16 31.75 0)
       (effects (font (size 1.27 1.27)) hide)
     )
     (property "Datasheet" "~" (id 3) (at 264.16 31.75 0)
@@ -3708,7 +3708,7 @@
       (reference "C4") (unit 1) (value "C_Small") (footprint "Capacitor_SMD:C_1206_3216Metric")
     )
     (path "/986f0686-4dd2-4d11-a20b-857347ffd112"
-      (reference "D1") (unit 1) (value "D_Schottky") (footprint "Diode_SMD:D_SOD-323_HandSoldering")
+      (reference "D1") (unit 1) (value "D_Schottky") (footprint "Diode_SMD:D_1206_3216Metric_Pad1.42x1.75mm_HandSolder")
     )
     (path "/f1c41838-eb1e-47a4-8dba-8e7e84008063"
       (reference "J1") (unit 1) (value "Conn_01x03_Female") (footprint "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical")
@@ -3726,13 +3726,13 @@
       (reference "U1") (unit 4) (value "4075") (footprint "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm")
     )
     (path "/50f1c47b-dcfb-48bb-ab30-5deb35a88ec4"
-      (reference "U2") (unit 1) (value "74LS245") (footprint "Package_SO:SOIC-20W_7.5x12.8mm_P1.27mm")
+      (reference "U2") (unit 1) (value "74LS245") (footprint "Package_SO:SO-20_5.3x12.6mm_P1.27mm")
     )
     (path "/5e3e627e-19b1-4d8a-8392-17f9e86892e1"
-      (reference "U3") (unit 1) (value "74LS245") (footprint "Package_SO:SOIC-20W_7.5x12.8mm_P1.27mm")
+      (reference "U3") (unit 1) (value "74LS245") (footprint "Package_SO:SO-20_5.3x12.6mm_P1.27mm")
     )
     (path "/0d903a43-d7cf-4289-a942-f915aaae1c46"
-      (reference "U4") (unit 1) (value "74LS245") (footprint "Package_SO:SOIC-20W_7.5x12.8mm_P1.27mm")
+      (reference "U4") (unit 1) (value "74LS245") (footprint "Package_SO:SO-20_5.3x12.6mm_P1.27mm")
     )
     (path "/e821345b-c1ac-4e84-af10-b11a34f6e4b2"
       (reference "U5") (unit 1) (value "Pico-rp2040") (footprint "pico-foot:RPi_Pico_SMD_TH")
