@@ -41,20 +41,20 @@ const uint8_t A11_GP         = 16;
 const uint8_t A12_GP         = 10;
 const uint8_t A13_GP         = 9;
 
-const uint32_t  A0_BIT_MASK  = (1 <<  A0_GP);
-const uint32_t  A1_BIT_MASK  = (1 <<  A1_GP);
-const uint32_t  A2_BIT_MASK  = (1 <<  A2_GP);
-const uint32_t  A3_BIT_MASK  = (1 <<  A3_GP);
-const uint32_t  A4_BIT_MASK  = (1 <<  A4_GP);
-const uint32_t  A5_BIT_MASK  = (1 <<  A5_GP);
-const uint32_t  A6_BIT_MASK  = (1 <<  A6_GP);
-const uint32_t  A7_BIT_MASK  = (1 <<  A7_GP);
-const uint32_t  A8_BIT_MASK  = (1 <<  A8_GP);
-const uint32_t  A9_BIT_MASK  = (1 <<  A9_GP);
-const uint32_t A10_BIT_MASK  = (1 << A10_GP);
-const uint32_t A11_BIT_MASK  = (1 << A11_GP);
-const uint32_t A12_BIT_MASK  = (1 << A12_GP);
-const uint32_t A13_BIT_MASK  = (1 << A13_GP);
+const uint32_t  A0_BIT_MASK  = ((uint32_t)1 <<  A0_GP);
+const uint32_t  A1_BIT_MASK  = ((uint32_t)1 <<  A1_GP);
+const uint32_t  A2_BIT_MASK  = ((uint32_t)1 <<  A2_GP);
+const uint32_t  A3_BIT_MASK  = ((uint32_t)1 <<  A3_GP);
+const uint32_t  A4_BIT_MASK  = ((uint32_t)1 <<  A4_GP);
+const uint32_t  A5_BIT_MASK  = ((uint32_t)1 <<  A5_GP);
+const uint32_t  A6_BIT_MASK  = ((uint32_t)1 <<  A6_GP);
+const uint32_t  A7_BIT_MASK  = ((uint32_t)1 <<  A7_GP);
+const uint32_t  A8_BIT_MASK  = ((uint32_t)1 <<  A8_GP);
+const uint32_t  A9_BIT_MASK  = ((uint32_t)1 <<  A9_GP);
+const uint32_t A10_BIT_MASK  = ((uint32_t)1 << A10_GP);
+const uint32_t A11_BIT_MASK  = ((uint32_t)1 << A11_GP);
+const uint32_t A12_BIT_MASK  = ((uint32_t)1 << A12_GP);
+const uint32_t A13_BIT_MASK  = ((uint32_t)1 << A13_GP);
 
 const uint8_t  D0_GP          = 0;
 const uint8_t  D1_GP          = 1;
@@ -68,19 +68,19 @@ const uint8_t  D7_GP          = 7;
 const uint8_t  ROM_ACCESS_GP  = 8;
 const uint8_t  WR_GP          = 15;
 
-const uint32_t ROM_ACCESS_BIT_MASK  = (1 << ROM_ACCESS_GP);
-const uint32_t WR_BIT_MASK          = (1 << WR_GP);
+const uint32_t ROM_ACCESS_BIT_MASK  = ((uint32_t)1 << ROM_ACCESS_GP);
+const uint32_t WR_BIT_MASK          = ((uint32_t)1 << WR_GP);
 
 const uint8_t  TEST_OUTPUT_GP = 28;
 
-const uint32_t DBUS_MASK     = (1 << D0_GP) |
-                               (1 << D1_GP) |
-                               (1 << D2_GP) |
-                               (1 << D3_GP) |
-                               (1 << D4_GP) |
-                               (1 << D5_GP) |
-                               (1 << D6_GP) |
-                               (1 << D7_GP);
+const uint32_t DBUS_MASK     = ((uint32_t)1 << D0_GP) |
+                               ((uint32_t)1 << D1_GP) |
+                               ((uint32_t)1 << D2_GP) |
+                               ((uint32_t)1 << D3_GP) |
+                               ((uint32_t)1 << D4_GP) |
+                               ((uint32_t)1 << D5_GP) |
+                               ((uint32_t)1 << D6_GP) |
+                               ((uint32_t)1 << D7_GP);
 
 #define STORE_SIZE 16384
 
@@ -186,23 +186,22 @@ int main()
 
     /* The level shifter is enabled via hardware, so just set the GPIOs */
     gpio_put_masked( DBUS_MASK,  (rom_value & 0x87)       |        /* bxxx xbbb */
-				((rom_value & 0x08) << 2) |        /* xxbx xxxx */
-				((rom_value & 0x10) >> 1) |        /* xxxx bxxx */
-                                ((rom_value & 0x20) << 1) |        /* xbxx xxxx */
-		                ((rom_value & 0x40) >> 2) );       /* xxxb xxxx */
+				((rom_value & 0x08) << 1) |        /* xxxb xxxx */
+				((rom_value & 0x10) << 2) |        /* xbxx xxxx */
+                                ((rom_value & 0x20) >> 2) |        /* xxxx bxxx */
+		                ((rom_value & 0x40) >> 1) );       /* xxbx xxxx */
 
     // Without the /WR check this point is at 350ns 270MHz
     // With    the /WR check this point is at 420ns 270MHz
     //  which is oddly slow, and too slow. Keep the /WR check out for now.
-
-    /* Spin until the Z80 releases MREQ indicating the read is complete */
-    while( (gpio_get_all() & ROM_ACCESS_BIT_MASK) == 0 );
 
 /* Blip the result pin, shows on scope */
 gpio_put( TEST_OUTPUT_GP, 1 );
 __asm volatile ("nop");
 gpio_put( TEST_OUTPUT_GP, 0 );
 
+    /* Spin until the Z80 releases MREQ indicating the read is complete */
+    while( (gpio_get_all() & ROM_ACCESS_BIT_MASK) == 0 );
 
     /*
      * Just leave the value there. The level shifter gets turned off by hardware
