@@ -17,3 +17,7 @@ one.
 The footprint for the Pico's schottky diode is wrong. I copied AM's
 circuit where he's used a SOD323 footprint. The diodes I bought are
 3216 sized, and so too big.
+
+
+A switch to disable /ROMCS would be useful, so I can switch the
+Spectrum's ROM back in and check I've not wrecked it.
