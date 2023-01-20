@@ -14,8 +14,8 @@
 /* 1 instruction on the 360MHz microprocessor is 2.8ns */
 
 //#define OVERCLOCK 200000
-//#define OVERCLOCK 250000
-#define OVERCLOCK 270000
+#define OVERCLOCK 250000
+//#define OVERCLOCK 270000
 //#define OVERCLOCK 360000
 
 #include "default_rom.h"
@@ -83,6 +83,7 @@ const uint32_t DBUS_MASK     = ((uint32_t)1 << D0_GP) |
                                ((uint32_t)1 << D7_GP);
 
 #define STORE_SIZE 16384
+uint8_t preconverted_rom_image[STORE_SIZE];
 
 int main()
 {
@@ -101,6 +102,27 @@ int main()
 #endif
 
   irq_set_mask_enabled( 0xFFFFFFFF, 0 );
+
+  /* Default to a copy of the ZX ROM */
+  uint8_t *rom_image_ptr = __48_pico_rom;
+
+  /*
+   * The bits of the bytes in the ROM need shuffling around to match the
+   * ordering of the D0-D7 bits on the output GPIOs. See the schematic.
+   * Do this now so the pre-converted bytes can be put straight onto
+   * the GPIOs at runtime.
+   */
+  uint16_t conv_index;
+  for( conv_index=0; conv_index < STORE_SIZE; conv_index++ )
+  {
+    uint8_t rom_byte = *(rom_image_ptr+conv_index);
+    preconverted_rom_image[conv_index] =  (rom_byte & 0x87)       |        /* bxxx xbbb */
+                                         ((rom_byte & 0x08) << 1) |        /* xxxb xxxx */
+                                         ((rom_byte & 0x10) << 2) |        /* xbxx xxxx */
+                                         ((rom_byte & 0x20) >> 2) |        /* xxxx bxxx */
+                                         ((rom_byte & 0x40) >> 1);         /* xxbx xxxx */
+  }
+  rom_image_ptr = preconverted_rom_image;
 
   /* Pull the buses to zeroes */
   gpio_init( A0_GP  ); gpio_set_dir( A0_GP,  GPIO_IN );  gpio_pull_down( A0_GP  );
@@ -146,8 +168,6 @@ int main()
   }
   gpio_put(LED_PIN, 0);
 
-  uint8_t *rom_image_ptr = __48_pico_rom;
-
   while(1)
   {
     register uint32_t gpios_state;
@@ -155,13 +175,9 @@ int main()
     /* Spin while the hardware is saying at least one of A14, A15 and MREQ is 1 */
     while( (gpios_state=gpio_get_all()) & ROM_ACCESS_BIT_MASK );
 
-// Leave this out for now, timing is too close with it in
     /* If /WRITE is low it's a write to ROM, ignore it */
-//    if( (gpios_state & WR_BIT_MASK) == 0 )
-//      continue;
-
-    // Without the /WR check this point is at 50ns 270MHz
-    // With    the /WR check this point is at 60ns 270MHz
+    if( (gpios_state & WR_BIT_MASK) == 0 )
+      continue;
 
     register uint16_t rom_address =
       ( ((A13_BIT_MASK & gpios_state) != 0) << 13 ) |
@@ -185,15 +201,10 @@ int main()
     register uint8_t rom_value = *(rom_image_ptr+rom_address);
 
     /* The level shifter is enabled via hardware, so just set the GPIOs */
-    gpio_put_masked( DBUS_MASK,  (rom_value & 0x87)       |        /* bxxx xbbb */
-				((rom_value & 0x08) << 1) |        /* xxxb xxxx */
-				((rom_value & 0x10) << 2) |        /* xbxx xxxx */
-                                ((rom_value & 0x20) >> 2) |        /* xxxx bxxx */
-		                ((rom_value & 0x40) >> 1) );       /* xxbx xxxx */
+    gpio_put_masked( DBUS_MASK, rom_value );
 
-    // Without the /WR check this point is at 350ns 270MHz
-    // With    the /WR check this point is at 420ns 270MHz
-    //  which is oddly slow, and too slow. Keep the /WR check out for now.
+    // With the /WR check this point is at 325ns 250MHz
+    // With the /WR check this point is at 300ns 270MHz
 
 /* Blip the result pin, shows on scope */
 gpio_put( TEST_OUTPUT_GP, 1 );
