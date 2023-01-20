@@ -85,6 +85,11 @@ const uint32_t DBUS_MASK     = ((uint32_t)1 << D0_GP) |
 #define STORE_SIZE 16384
 uint8_t preconverted_rom_image[STORE_SIZE];
 
+#define        INDIRECTION_SIZE   65536
+const uint8_t  INDIRECTION_SHIFT = 9;
+const uint32_t INDIRECTION_MASK  = 0x0000FFFF;
+uint16_t indirection_table[INDIRECTION_SIZE];
+
 int main()
 {
   bi_decl(bi_program_description("ZX Spectrum Pico ROM board binary."));
@@ -124,6 +129,47 @@ int main()
   }
   rom_image_ptr = preconverted_rom_image;
 
+  for( uint32_t indirection_index=0; indirection_index < INDIRECTION_SIZE; indirection_index++ )
+  {
+    uint32_t indirection_value = (indirection_index << INDIRECTION_SHIFT) & ~WR_BIT_MASK;
+
+#if 0
+    uint16_t hw_address =
+      ( ((A13_BIT_MASK & indirection_value) != 0) << 13 ) |
+      ( ((A12_BIT_MASK & indirection_value) != 0) << 12 ) |
+      ( ((A11_BIT_MASK & indirection_value) != 0) << 11 ) |
+      ( ((A10_BIT_MASK & indirection_value) != 0) << 10 ) |
+      ( (( A9_BIT_MASK & indirection_value) != 0) <<  9 ) |
+      ( (( A8_BIT_MASK & indirection_value) != 0) <<  8 ) |
+      ( (( A7_BIT_MASK & indirection_value) != 0) <<  7 ) |
+      ( (( A6_BIT_MASK & indirection_value) != 0) <<  6 ) |
+      ( (( A5_BIT_MASK & indirection_value) != 0) <<  5 ) |
+      ( (( A4_BIT_MASK & indirection_value) != 0) <<  4 ) |
+      ( (( A3_BIT_MASK & indirection_value) != 0) <<  3 ) |
+      ( (( A2_BIT_MASK & indirection_value) != 0) <<  2 ) |
+      ( (( A1_BIT_MASK & indirection_value) != 0) <<  1 ) |
+      ( (( A0_BIT_MASK & indirection_value) != 0) <<  0 );
+#endif
+
+    uint16_t hw_address =
+      ( ((A13_BIT_MASK & indirection_value)) ) |
+      ( ((A12_BIT_MASK & indirection_value) )) |
+      ( ((A11_BIT_MASK & indirection_value) )) |
+      ( ((A10_BIT_MASK & indirection_value)) ) |
+      ( (( A9_BIT_MASK & indirection_value) )) |
+      ( (( A8_BIT_MASK & indirection_value) )) |
+      ( (( A7_BIT_MASK & indirection_value)) ) |
+      ( (( A6_BIT_MASK & indirection_value) )) |
+      ( (( A5_BIT_MASK & indirection_value) )) |
+      ( (( A4_BIT_MASK & indirection_value)) ) |
+      ( (( A3_BIT_MASK & indirection_value) )) |
+      ( (( A2_BIT_MASK & indirection_value) )) |
+      ( (( A1_BIT_MASK & indirection_value) )) |
+      ( (( A0_BIT_MASK & indirection_value) ));
+
+    indirection_table[hw_address >> INDIRECTION_SHIFT] = indirection_index;
+  }
+
   /* Pull the buses to zeroes */
   gpio_init( A0_GP  ); gpio_set_dir( A0_GP,  GPIO_IN );  gpio_pull_down( A0_GP  );
   gpio_init( A1_GP  ); gpio_set_dir( A1_GP,  GPIO_IN );  gpio_pull_down( A1_GP  );
@@ -149,7 +195,7 @@ int main()
   gpio_init( D6_GP  ); gpio_set_dir( D6_GP,  GPIO_OUT ); gpio_put( D6_GP, 0 );
   gpio_init( D7_GP  ); gpio_set_dir( D7_GP,  GPIO_OUT ); gpio_put( D7_GP, 0 );
 
-  gpio_init( ROM_ACCESS_GP ); gpio_set_dir( ROM_ACCESS_GP, GPIO_IN ); //gpio_pull_up( ROM_ACCESS_GP );
+  gpio_init( ROM_ACCESS_GP ); gpio_set_dir( ROM_ACCESS_GP, GPIO_IN );
   gpio_init( WR_GP         ); gpio_set_dir( WR_GP,         GPIO_IN ); gpio_pull_up( WR_GP         );
 
   /* Set up test pin */
@@ -194,6 +240,11 @@ int main()
       ( (( A2_BIT_MASK & gpios_state) != 0) <<  2 ) |
       ( (( A1_BIT_MASK & gpios_state) != 0) <<  1 ) |
       ( (( A0_BIT_MASK & gpios_state) != 0) <<  0 );
+
+#if 0
+    // Not sure where this is going or if it's necessary
+    register uint32_t rom_address = indirection_table[(gpios_state >> INDIRECTION_SHIFT) & INDIRECTION_MASK];
+#endif
 
     // Without the /WR check this point is at 65ns 270MHz
     // With    the /WR check this point is at 75ns 270MHz		 
