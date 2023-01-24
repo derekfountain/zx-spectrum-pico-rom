@@ -65,13 +65,24 @@ const uint8_t  D5_GP          = 3;
 const uint8_t  D6_GP          = 5;
 const uint8_t  D7_GP          = 7;
 
-const uint8_t  ROM_ACCESS_GP  = 8;
-const uint8_t  WR_GP          = 15;
+const uint32_t  D0_BIT_MASK  = ((uint32_t)1 <<  D0_GP);
+const uint32_t  D1_BIT_MASK  = ((uint32_t)1 <<  D1_GP);
+const uint32_t  D2_BIT_MASK  = ((uint32_t)1 <<  D2_GP);
+const uint32_t  D3_BIT_MASK  = ((uint32_t)1 <<  D3_GP);
+const uint32_t  D4_BIT_MASK  = ((uint32_t)1 <<  D4_GP);
+const uint32_t  D5_BIT_MASK  = ((uint32_t)1 <<  D5_GP);
+const uint32_t  D6_BIT_MASK  = ((uint32_t)1 <<  D6_GP);
+const uint32_t  D7_BIT_MASK  = ((uint32_t)1 <<  D7_GP);
 
+const uint8_t  ROM_ACCESS_GP        = 8;
 const uint32_t ROM_ACCESS_BIT_MASK  = ((uint32_t)1 << ROM_ACCESS_GP);
-const uint32_t WR_BIT_MASK          = ((uint32_t)1 << WR_GP);
 
-const uint8_t  TEST_OUTPUT_GP = 28;
+const uint8_t  PICO_RESET_Z80_GP = 15;
+
+const uint8_t  TEST_OUTPUT_GP = 27;
+
+const uint8_t  PICO_USER_INPUT_GP       = 28;
+const uint32_t PICO_USER_INPUT_BIT_MASK = ((uint32_t)1 << PICO_USER_INPUT_GP);
 
 const uint32_t DBUS_MASK     = ((uint32_t)1 << D0_GP) |
                                ((uint32_t)1 << D1_GP) |
@@ -84,7 +95,6 @@ const uint32_t DBUS_MASK     = ((uint32_t)1 << D0_GP) |
 
 #define STORE_SIZE 16384
 uint8_t preconverted_rom_image[STORE_SIZE];
-
 
 int main()
 {
@@ -104,8 +114,8 @@ int main()
 
   irq_set_mask_enabled( 0xFFFFFFFF, 0 );
 
-  /* Default to a copy of the ZX ROM */
-  uint8_t *rom_image_ptr = __ROMs_tranz_am_rom; //__ROMs_48_pico_rom;
+  /* Default to a copy of the ZX ROM. The ROMs creation script needs this one in place  */
+  uint8_t *rom_image_ptr = __ROMs_48_pico_rom;
 
   /*
    * The bits of the bytes in the ROM need shuffling around to match the
@@ -150,11 +160,15 @@ int main()
   gpio_init( D6_GP  ); gpio_set_dir( D6_GP,  GPIO_OUT ); gpio_put( D6_GP, 0 );
   gpio_init( D7_GP  ); gpio_set_dir( D7_GP,  GPIO_OUT ); gpio_put( D7_GP, 0 );
 
-  gpio_init( ROM_ACCESS_GP ); gpio_set_dir( ROM_ACCESS_GP, GPIO_IN );
-  gpio_init( WR_GP         ); gpio_set_dir( WR_GP,         GPIO_IN ); gpio_pull_up( WR_GP         );
+  gpio_init( ROM_ACCESS_GP );      gpio_set_dir( ROM_ACCESS_GP,     GPIO_IN );
 
   /* Set up test pin */
   gpio_init( TEST_OUTPUT_GP ); gpio_set_dir( TEST_OUTPUT_GP, GPIO_OUT ); gpio_put( TEST_OUTPUT_GP, 0 );
+
+  gpio_init( PICO_RESET_Z80_GP );  gpio_set_dir( PICO_RESET_Z80_GP, GPIO_OUT );
+  gpio_pull_down( PICO_RESET_Z80_GP );
+
+  gpio_init( PICO_USER_INPUT_GP ); gpio_set_dir( PICO_USER_INPUT_GP, GPIO_IN );
 
   /* Blip LED to show we're running */
   gpio_init(LED_PIN);
@@ -169,16 +183,32 @@ int main()
   }
   gpio_put(LED_PIN, 0);
 
+#if 0
+// Test for user input switch
+  while(1)
+  {
+    register uint32_t gpios_state=gpio_get_all();
+    if( gpios_state & PICO_USER_INPUT_BIT_MASK )
+      gpio_put(LED_PIN, 1);
+    else
+      gpio_put(LED_PIN, 0);
+  }
+#endif
+
   while(1)
   {
     register uint32_t gpios_state;
 
-    /* Spin while the hardware is saying at least one of A14, A15 and MREQ is 1 */
+    /*
+     * Spin while the hardware is saying at least one of A14, A15 and MREQ is 1.
+     * ROM_ACCESS is active low - if it's 1 then the ROM is not being accessed.
+     */
     while( (gpios_state=gpio_get_all()) & ROM_ACCESS_BIT_MASK );
 
-    /* If /WRITE is low it's a write to ROM, ignore it */
-    if( (gpios_state & WR_BIT_MASK) == 0 )
-      continue;
+/* Blip the result pin, shows on scope */
+gpio_put( TEST_OUTPUT_GP, 1 );
+__asm volatile ("nop");
+gpio_put( TEST_OUTPUT_GP, 0 );
 
     register uint16_t rom_address =
       ( ((A13_BIT_MASK & gpios_state) != 0) << 13 ) |
@@ -207,12 +237,10 @@ int main()
     // With the /WR check this point is at 325ns 250MHz
     // With the /WR check this point is at 300ns 270MHz
 
-/* Blip the result pin, shows on scope */
-gpio_put( TEST_OUTPUT_GP, 1 );
-__asm volatile ("nop");
-gpio_put( TEST_OUTPUT_GP, 0 );
-
-    /* Spin until the Z80 releases MREQ indicating the read is complete */
+    /*
+     * Spin until the Z80 releases MREQ indicating the read is complete.
+     * ROM_ACCESS is active low - if it's 0 then the ROM is still being accessed.
+     */
     while( (gpio_get_all() & ROM_ACCESS_BIT_MASK) == 0 );
 
     /*

@@ -16,8 +16,32 @@ one.
 
 The footprint for the Pico's schottky diode is wrong. I copied AM's
 circuit where he's used a SOD323 footprint. The diodes I bought are
-3216 sized, and so too big.
+3216 sized, and so too big. Increase footprint size.
 
 
-A switch to disable /ROMCS would be useful, so I can switch the
-Spectrum's ROM back in and check I've not wrecked it.
+I don't need the /WR line at the Pico. The level shifter for the
+data bus is permanently in the Pico->ZX direction, so I can't
+pick up a written value from the data bus. That level shifter is
+turned on/off by hardware so there's no issue with the device
+responding to a write-to-ROM in the same way as it responds to
+a read-from-ROM. Delete the /WR connection and reclaim the GPIO
+on the Pico.
+
+
+It needs access to the Z80's /RESET line. It's a pain having to
+use the switch on the Spectrum for something that the board can
+do itself. This is also needed to start at address 0 when a new
+ROM gets switched in. Pico needs a GPIO set to output which it
+can use to bring the Z80's /RESET line low. I can use the GPIO
+freed by the now unneeded /WR connection.
+
+
+It needs a reset button input. Writing to the ROM to reboot doesn't
+seem practical. It needs a button. I think a brief press will reset
+the Z80 (parallel to the MOSFET); a long press can reboot the Pico
+itself.
+
+
+I needs a second button to change ROMs (then reset the Z80). I can
+blink the Pico LED to indicate the ROM slot in use. I have one
+spare GPIO, it can be used for this.
