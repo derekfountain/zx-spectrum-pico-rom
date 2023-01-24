@@ -160,15 +160,20 @@ int main()
   gpio_init( D6_GP  ); gpio_set_dir( D6_GP,  GPIO_OUT ); gpio_put( D6_GP, 0 );
   gpio_init( D7_GP  ); gpio_set_dir( D7_GP,  GPIO_OUT ); gpio_put( D7_GP, 0 );
 
-  gpio_init( ROM_ACCESS_GP );      gpio_set_dir( ROM_ACCESS_GP,     GPIO_IN );
+  gpio_init( ROM_ACCESS_GP ); gpio_set_dir( ROM_ACCESS_GP,     GPIO_IN );
+  gpio_pull_down( ROM_ACCESS_GP );
 
   /* Set up test pin */
-  gpio_init( TEST_OUTPUT_GP ); gpio_set_dir( TEST_OUTPUT_GP, GPIO_OUT ); gpio_put( TEST_OUTPUT_GP, 0 );
+  gpio_init( TEST_OUTPUT_GP ); gpio_set_dir( TEST_OUTPUT_GP, GPIO_OUT );
+  gpio_put( TEST_OUTPUT_GP, 0 );
 
+  /* Set up Pico's Z80 reset pin, hold at 0 to let Z80 run */
   gpio_init( PICO_RESET_Z80_GP );  gpio_set_dir( PICO_RESET_Z80_GP, GPIO_OUT );
-  gpio_pull_down( PICO_RESET_Z80_GP );
+  gpio_put( PICO_RESET_Z80_GP, 0 );
 
+  /* Set up Pico's input pin, pull to zero, switch will send it to 1 */
   gpio_init( PICO_USER_INPUT_GP ); gpio_set_dir( PICO_USER_INPUT_GP, GPIO_IN );
+  gpio_pull_down( PICO_USER_INPUT_GP );
 
   /* Blip LED to show we're running */
   gpio_init(LED_PIN);
@@ -204,11 +209,6 @@ int main()
      * ROM_ACCESS is active low - if it's 1 then the ROM is not being accessed.
      */
     while( (gpios_state=gpio_get_all()) & ROM_ACCESS_BIT_MASK );
-
-/* Blip the result pin, shows on scope */
-gpio_put( TEST_OUTPUT_GP, 1 );
-__asm volatile ("nop");
-gpio_put( TEST_OUTPUT_GP, 0 );
 
     register uint16_t rom_address =
       ( ((A13_BIT_MASK & gpios_state) != 0) << 13 ) |
