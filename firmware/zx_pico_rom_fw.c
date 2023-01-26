@@ -74,12 +74,10 @@ const uint32_t  D5_BIT_MASK  = ((uint32_t)1 <<  D5_GP);
 const uint32_t  D6_BIT_MASK  = ((uint32_t)1 <<  D6_GP);
 const uint32_t  D7_BIT_MASK  = ((uint32_t)1 <<  D7_GP);
 
-const uint8_t  ROM_ACCESS_GP        = 8;
-const uint32_t ROM_ACCESS_BIT_MASK  = ((uint32_t)1 << ROM_ACCESS_GP);
+const uint8_t  ROM_ACCESS_GP            = 8;
+const uint32_t ROM_ACCESS_BIT_MASK      = ((uint32_t)1 << ROM_ACCESS_GP);
 
-const uint8_t  PICO_RESET_Z80_GP = 15;
-
-const uint8_t  TEST_OUTPUT_GP = 27;
+const uint8_t  PICO_RESET_Z80_GP        = 27;
 
 const uint8_t  PICO_USER_INPUT_GP       = 28;
 const uint32_t PICO_USER_INPUT_BIT_MASK = ((uint32_t)1 << PICO_USER_INPUT_GP);
@@ -160,18 +158,15 @@ int main()
   gpio_init( D6_GP  ); gpio_set_dir( D6_GP,  GPIO_OUT ); gpio_put( D6_GP, 0 );
   gpio_init( D7_GP  ); gpio_set_dir( D7_GP,  GPIO_OUT ); gpio_put( D7_GP, 0 );
 
-  gpio_init( ROM_ACCESS_GP ); gpio_set_dir( ROM_ACCESS_GP,     GPIO_IN );
+  /* Input from logic hardware, indicates the ROM is being accessed by the Z80 */
+  gpio_init( ROM_ACCESS_GP ); gpio_set_dir( ROM_ACCESS_GP, GPIO_IN );
   gpio_pull_down( ROM_ACCESS_GP );
-
-  /* Set up test pin */
-  gpio_init( TEST_OUTPUT_GP ); gpio_set_dir( TEST_OUTPUT_GP, GPIO_OUT );
-  gpio_put( TEST_OUTPUT_GP, 0 );
 
   /* Set up Pico's Z80 reset pin, hold at 0 to let Z80 run */
   gpio_init( PICO_RESET_Z80_GP );  gpio_set_dir( PICO_RESET_Z80_GP, GPIO_OUT );
   gpio_put( PICO_RESET_Z80_GP, 0 );
 
-  /* Set up Pico's input pin, pull to zero, switch will send it to 1 */
+  /* Set up Pico's user input pin, pull to zero, switch will send it to 1 */
   gpio_init( PICO_USER_INPUT_GP ); gpio_set_dir( PICO_USER_INPUT_GP, GPIO_IN );
   gpio_pull_down( PICO_USER_INPUT_GP );
 

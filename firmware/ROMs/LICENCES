@@ -1,0 +1,15 @@
+These are what I believe are free-to-distribute ROM images.
+
+The 48_original ROM is the original 48K ROM from the ZX Spectrum.
+This is copyright Amstrad, free to distribute for non-profit.
+
+The 48_pico ROM is the original 48K ROM with the banner messgae
+changed. This allows the user to see that the ZX Spectrum's ROM
+isn't the one running. This is the default ROM image for my
+Pico based ROM device.
+
+The Retroleum ROM is the diagnostics ROM image as provided by
+Retroleum in their trouble shooting ROM cards.
+
+The GOSH wonderful ROM is Geoff Wearmouth's ROM as presented
+here: https://www.tablix.org/~avian/spectrum/rom/gw03info.htm
