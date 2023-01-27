@@ -77,9 +77,9 @@ const uint32_t  D7_BIT_MASK  = ((uint32_t)1 <<  D7_GP);
 const uint8_t  ROM_ACCESS_GP            = 8;
 const uint32_t ROM_ACCESS_BIT_MASK      = ((uint32_t)1 << ROM_ACCESS_GP);
 
-const uint8_t  PICO_RESET_Z80_GP        = 27;
+const uint8_t  PICO_RESET_Z80_GP        = 28;
 
-const uint8_t  PICO_USER_INPUT_GP       = 28;
+const uint8_t  PICO_USER_INPUT_GP       = 27;
 const uint32_t PICO_USER_INPUT_BIT_MASK = ((uint32_t)1 << PICO_USER_INPUT_GP);
 
 const uint32_t DBUS_MASK     = ((uint32_t)1 << D0_GP) |
@@ -93,6 +93,18 @@ const uint32_t DBUS_MASK     = ((uint32_t)1 << D0_GP) |
 
 #define STORE_SIZE 16384
 uint8_t preconverted_rom_image[STORE_SIZE];
+
+bool periodic_reset( repeating_timer_t *rt )
+{
+  gpio_put(LED_PIN, 1);
+  gpio_put( PICO_RESET_Z80_GP, 1 );
+  busy_wait_us_32(5000);
+  gpio_put( PICO_RESET_Z80_GP, 0 );
+  gpio_put(LED_PIN, 0);
+    
+  return 1;
+}
+
 
 int main()
 {
@@ -110,7 +122,10 @@ int main()
   set_sys_clock_khz( OVERCLOCK, 1 );
 #endif
 
-  irq_set_mask_enabled( 0xFFFFFFFF, 0 );
+//  irq_set_mask_enabled( 0xFFFFFFFF, 0 );
+
+  repeating_timer_t timer;
+  add_repeating_timer_ms( 20000, periodic_reset, NULL, &timer );
 
   /* Default to a copy of the ZX ROM. The ROMs creation script needs this one in place  */
   uint8_t *rom_image_ptr = __ROMs_48_pico_rom;
