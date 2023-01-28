@@ -77,8 +77,10 @@ const uint32_t  D7_BIT_MASK  = ((uint32_t)1 <<  D7_GP);
 const uint8_t  ROM_ACCESS_GP            = 8;
 const uint32_t ROM_ACCESS_BIT_MASK      = ((uint32_t)1 << ROM_ACCESS_GP);
 
+/* This pin triggers a transistor which shorts the Z80's /RESET to ground */
 const uint8_t  PICO_RESET_Z80_GP        = 28;
 
+/* This pin sits low; it's switched to high. That's the user input */
 const uint8_t  PICO_USER_INPUT_GP       = 27;
 const uint32_t PICO_USER_INPUT_BIT_MASK = ((uint32_t)1 << PICO_USER_INPUT_GP);
 
@@ -93,18 +95,6 @@ const uint32_t DBUS_MASK     = ((uint32_t)1 << D0_GP) |
 
 #define STORE_SIZE 16384
 uint8_t preconverted_rom_image[STORE_SIZE];
-
-bool periodic_reset( repeating_timer_t *rt )
-{
-  gpio_put(LED_PIN, 1);
-  gpio_put( PICO_RESET_Z80_GP, 1 );
-  busy_wait_us_32(5000);
-  gpio_put( PICO_RESET_Z80_GP, 0 );
-  gpio_put(LED_PIN, 0);
-    
-  return 1;
-}
-
 
 int main()
 {
@@ -122,10 +112,15 @@ int main()
   set_sys_clock_khz( OVERCLOCK, 1 );
 #endif
 
-//  irq_set_mask_enabled( 0xFFFFFFFF, 0 );
+  /*
+   * Set up Pico's Z80 reset pin, hold this at 0 to let Z80 run.
+   * Set and hold 1 here to hold Spectrum in reset at startup until we're good
+   * to provide its ROM
+   */
+  gpio_init( PICO_RESET_Z80_GP );  gpio_set_dir( PICO_RESET_Z80_GP, GPIO_OUT );
+  gpio_put( PICO_RESET_Z80_GP, 1 );
 
-  repeating_timer_t timer;
-  add_repeating_timer_ms( 20000, periodic_reset, NULL, &timer );
+  irq_set_mask_enabled( 0xFFFFFFFF, 0 );
 
   /* Default to a copy of the ZX ROM. The ROMs creation script needs this one in place  */
   uint8_t *rom_image_ptr = __ROMs_48_pico_rom;
@@ -177,10 +172,6 @@ int main()
   gpio_init( ROM_ACCESS_GP ); gpio_set_dir( ROM_ACCESS_GP, GPIO_IN );
   gpio_pull_down( ROM_ACCESS_GP );
 
-  /* Set up Pico's Z80 reset pin, hold at 0 to let Z80 run */
-  gpio_init( PICO_RESET_Z80_GP );  gpio_set_dir( PICO_RESET_Z80_GP, GPIO_OUT );
-  gpio_put( PICO_RESET_Z80_GP, 0 );
-
   /* Set up Pico's user input pin, pull to zero, switch will send it to 1 */
   gpio_init( PICO_USER_INPUT_GP ); gpio_set_dir( PICO_USER_INPUT_GP, GPIO_IN );
   gpio_pull_down( PICO_USER_INPUT_GP );
@@ -198,17 +189,10 @@ int main()
   }
   gpio_put(LED_PIN, 0);
 
-#if 0
-// Test for user input switch
-  while(1)
-  {
-    register uint32_t gpios_state=gpio_get_all();
-    if( gpios_state & PICO_USER_INPUT_BIT_MASK )
-      gpio_put(LED_PIN, 1);
-    else
-      gpio_put(LED_PIN, 0);
-  }
-#endif
+  /* Ready to go, let the Z80 start */
+  gpio_put( PICO_RESET_Z80_GP, 0 );
+
+  uint32_t counter = 0;
 
   while(1)
   {
@@ -218,7 +202,22 @@ int main()
      * Spin while the hardware is saying at least one of A14, A15 and MREQ is 1.
      * ROM_ACCESS is active low - if it's 1 then the ROM is not being accessed.
      */
-    while( (gpios_state=gpio_get_all()) & ROM_ACCESS_BIT_MASK );
+    while( ( (gpios_state=gpio_get_all()) & ROM_ACCESS_BIT_MASK )
+	   &&
+	   ( (gpios_state & PICO_USER_INPUT_BIT_MASK) == 0 ) );
+
+    if( 1 && (gpios_state & PICO_USER_INPUT_BIT_MASK) )
+    {
+      if( counter++ == 0 ){  gpio_put(LED_PIN, 1); busy_wait_us_32(250000); gpio_put(LED_PIN, 0); }
+
+// Maybe some sort of bounce issue going on here? It shouldn't be running this code 
+// until the button is pressed, but it clearly is
+      gpio_put(LED_PIN, 1);
+      gpio_put( PICO_RESET_Z80_GP, 1 );
+      while( (gpio_get_all() & PICO_USER_INPUT_BIT_MASK) == 1 );
+      gpio_put( PICO_RESET_Z80_GP, 0 );
+      gpio_put(LED_PIN, 0);
+    }
 
     register uint16_t rom_address =
       ( ((A13_BIT_MASK & gpios_state) != 0) << 13 ) |
