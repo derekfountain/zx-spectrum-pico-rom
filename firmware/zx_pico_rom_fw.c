@@ -238,31 +238,33 @@ int main()
     /* If the user button is pressed, change ROM then reset */
     if( gpios_state & PICO_USER_INPUT_BIT_MASK )
     {
+      /* Debounce pause, the switch is a bit noisy */
       if( (get_time_us() - debounce_timestamp_us) < 50000 )
       {
 	debounce_timestamp_us = get_time_us();
       }
       else
       {
-//	gpio_put(LED_PIN, 1);
+	/*
+	 * Switch ROMs. The Pico's LED is lit to show that something is happening,
+	 * the ROM image is advanced and the ZX is reset. Wait for the button to
+	 * be released, then we're done.
+	 */
+
+ 	gpio_put(LED_PIN, 1);
 	
 	if( ++current_rom_index == num_roms ) current_rom_index=0;
 	rom_image_ptr = roms[ current_rom_index ];
 
 	gpio_put( PICO_RESET_Z80_GP, 1 );
+	
+	/* Wait for the button to be released. Pause is to debounce */
 	while( (gpio_get_all() & PICO_USER_INPUT_BIT_MASK) );
-{
-  int signal;
-  for( signal=0; signal<current_rom_index+1; signal++ )
-  {
-    gpio_put(LED_PIN, 1);
-    busy_wait_us_32(250000);
-    gpio_put(LED_PIN, 0);
-    busy_wait_us_32(250000);
-  }
-}
+	busy_wait_us_32(50000);
+
 	gpio_put( PICO_RESET_Z80_GP, 0 );
-//	gpio_put(LED_PIN, 0);
+
+	gpio_put(LED_PIN, 0);
 
 	continue;
       }
