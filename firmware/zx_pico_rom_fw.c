@@ -94,7 +94,43 @@ const uint32_t DBUS_MASK     = ((uint32_t)1 << D0_GP) |
                                ((uint32_t)1 << D7_GP);
 
 #define STORE_SIZE 16384
-uint8_t preconverted_rom_image[STORE_SIZE];
+
+/*
+ * The bits of the bytes in the ROM need shuffling around to match the
+ * ordering of the D0-D7 bits on the output GPIOs. See the schematic.
+ * Do this now so the pre-converted bytes can be put straight onto
+ * the GPIOs at runtime.
+ */
+void preconvert_rom( uint8_t rom_index )
+{
+  uint8_t *image_ptr = roms[rom_index];
+
+  uint16_t conv_index;
+  for( conv_index=0; conv_index < STORE_SIZE; conv_index++ )
+  {
+    uint8_t rom_byte = *(image_ptr+conv_index);
+    *(image_ptr+conv_index) =  (rom_byte & 0x87)       |        /* bxxx xbbb */
+                              ((rom_byte & 0x08) << 1) |        /* xxxb xxxx */
+                              ((rom_byte & 0x10) << 2) |        /* xbxx xxxx */
+                              ((rom_byte & 0x20) >> 2) |        /* xxxx bxxx */
+                              ((rom_byte & 0x40) >> 1);         /* xxbx xxxx */
+  }
+}
+
+/*
+ * Loop over all the ROM images in the header file and convert their bit
+ * patterns to match the order of bits of the data bus. It's quicker to
+ * preconvert these at the start than to fiddle the bits each read cycle.
+ */
+void preconvert_roms( void )
+{
+  uint8_t rom_index;
+  for( rom_index = 0; rom_index < num_roms; rom_index++ )
+  {
+    preconvert_rom( rom_index );
+  }
+}
+
 
 int main()
 {
@@ -122,26 +158,10 @@ int main()
 
   irq_set_mask_enabled( 0xFFFFFFFF, 0 );
 
-  /* Default to a copy of the ZX ROM. The ROMs creation script needs this one in place  */
-  uint8_t *rom_image_ptr = __ROMs_48_pico_rom;
-
-  /*
-   * The bits of the bytes in the ROM need shuffling around to match the
-   * ordering of the D0-D7 bits on the output GPIOs. See the schematic.
-   * Do this now so the pre-converted bytes can be put straight onto
-   * the GPIOs at runtime.
-   */
-  uint16_t conv_index;
-  for( conv_index=0; conv_index < STORE_SIZE; conv_index++ )
-  {
-    uint8_t rom_byte = *(rom_image_ptr+conv_index);
-    preconverted_rom_image[conv_index] =  (rom_byte & 0x87)       |        /* bxxx xbbb */
-                                         ((rom_byte & 0x08) << 1) |        /* xxxb xxxx */
-                                         ((rom_byte & 0x10) << 2) |        /* xbxx xxxx */
-                                         ((rom_byte & 0x20) >> 2) |        /* xxxx bxxx */
-                                         ((rom_byte & 0x40) >> 1);         /* xxbx xxxx */
-  }
-  rom_image_ptr = preconverted_rom_image;
+  /* Default to a copy of the ZX ROM (or whatever is in roms slot 0). */
+  preconvert_roms();
+  uint8_t current_rom_index = 0;
+  uint8_t *rom_image_ptr = roms[ current_rom_index ];
 
   /* Pull the buses to zeroes */
   gpio_init( A0_GP  ); gpio_set_dir( A0_GP,  GPIO_IN );  gpio_pull_down( A0_GP  );
@@ -192,8 +212,6 @@ int main()
   /* Ready to go, let the Z80 start */
   gpio_put( PICO_RESET_Z80_GP, 0 );
 
-  uint32_t counter = 0;
-
   while(1)
   {
     register uint32_t gpios_state;
@@ -201,22 +219,26 @@ int main()
     /*
      * Spin while the hardware is saying at least one of A14, A15 and MREQ is 1.
      * ROM_ACCESS is active low - if it's 1 then the ROM is not being accessed.
+     * Also break out when the user button is pressed.
      */
     while( ( (gpios_state=gpio_get_all()) & ROM_ACCESS_BIT_MASK )
 	   &&
 	   ( (gpios_state & PICO_USER_INPUT_BIT_MASK) == 0 ) );
 
-    if( 1 && (gpios_state & PICO_USER_INPUT_BIT_MASK) )
+    /* If the user button is pressed, change ROM then reset */
+    if( gpios_state & PICO_USER_INPUT_BIT_MASK )
     {
-      if( counter++ == 0 ){  gpio_put(LED_PIN, 1); busy_wait_us_32(250000); gpio_put(LED_PIN, 0); }
-
-// Maybe some sort of bounce issue going on here? It shouldn't be running this code 
-// until the button is pressed, but it clearly is
       gpio_put(LED_PIN, 1);
+
+      if( ++current_rom_index == num_roms ) current_rom_index=0;
+      rom_image_ptr = roms[ current_rom_index ];
+
       gpio_put( PICO_RESET_Z80_GP, 1 );
       while( (gpio_get_all() & PICO_USER_INPUT_BIT_MASK) == 1 );
       gpio_put( PICO_RESET_Z80_GP, 0 );
       gpio_put(LED_PIN, 0);
+
+      continue;
     }
 
     register uint16_t rom_address =
