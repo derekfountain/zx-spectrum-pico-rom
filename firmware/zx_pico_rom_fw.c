@@ -5,7 +5,7 @@
 #include "pico/stdlib.h"
 #include "hardware/gpio.h"
 #include "pico/binary_info.h"
-#include "hardware/vreg.h"
+#include "hardware/timer.h"
 
 
 /* 1 instruction on the 133MHz microprocessor is 7.5ns */
@@ -131,6 +131,13 @@ void preconvert_roms( void )
   }
 }
 
+/* From the timer_lowlevel.c example */
+uint64_t get_time_us( void )
+{
+  uint32_t lo = timer_hw->timelr;
+  uint32_t hi = timer_hw->timehr;
+  return ((uint64_t)hi << 32u) | lo;
+}
 
 int main()
 {
@@ -212,6 +219,8 @@ int main()
   /* Ready to go, let the Z80 start */
   gpio_put( PICO_RESET_Z80_GP, 0 );
 
+  uint64_t debounce_timestamp_us = 0;
+
   while(1)
   {
     register uint32_t gpios_state;
@@ -225,20 +234,38 @@ int main()
 	   &&
 	   ( (gpios_state & PICO_USER_INPUT_BIT_MASK) == 0 ) );
 
+
     /* If the user button is pressed, change ROM then reset */
     if( gpios_state & PICO_USER_INPUT_BIT_MASK )
     {
-      gpio_put(LED_PIN, 1);
+      if( (get_time_us() - debounce_timestamp_us) < 50000 )
+      {
+	debounce_timestamp_us = get_time_us();
+      }
+      else
+      {
+//	gpio_put(LED_PIN, 1);
+	
+	if( ++current_rom_index == num_roms ) current_rom_index=0;
+	rom_image_ptr = roms[ current_rom_index ];
 
-      if( ++current_rom_index == num_roms ) current_rom_index=0;
-      rom_image_ptr = roms[ current_rom_index ];
+	gpio_put( PICO_RESET_Z80_GP, 1 );
+	while( (gpio_get_all() & PICO_USER_INPUT_BIT_MASK) );
+{
+  int signal;
+  for( signal=0; signal<current_rom_index+1; signal++ )
+  {
+    gpio_put(LED_PIN, 1);
+    busy_wait_us_32(250000);
+    gpio_put(LED_PIN, 0);
+    busy_wait_us_32(250000);
+  }
+}
+	gpio_put( PICO_RESET_Z80_GP, 0 );
+//	gpio_put(LED_PIN, 0);
 
-      gpio_put( PICO_RESET_Z80_GP, 1 );
-      while( (gpio_get_all() & PICO_USER_INPUT_BIT_MASK) == 1 );
-      gpio_put( PICO_RESET_Z80_GP, 0 );
-      gpio_put(LED_PIN, 0);
-
-      continue;
+	continue;
+      }
     }
 
     register uint16_t rom_address =
