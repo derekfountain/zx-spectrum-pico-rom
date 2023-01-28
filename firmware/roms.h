@@ -5480,3 +5480,4 @@ __ROMs_retroleum_diag_v59_rom,
 __ROMs_gosh_wonderful_1_32_rom,
 __ROMs_48_original_rom,
 };
+uint8_t num_roms = sizeof(roms) / sizeof(unsigned char *);
