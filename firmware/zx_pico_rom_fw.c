@@ -12,7 +12,7 @@
 /* 1 instruction on the 140MHz microprocessor is 7.1ns */
 /* 1 instruction on the 200MHz microprocessor is 5.0ns */
 
-#define OVERCLOCK 140000
+//#define OVERCLOCK 140000
 //#define OVERCLOCK 200000
 
 #include "roms.h"
@@ -44,8 +44,8 @@ const uint8_t A13_GP         = 9;
  */
 inline uint16_t pack_address_gpios( uint32_t gpios )
 {
-/*       Bits 0,1,2,3,4,5       Bits 6,7,8,9,10,11,12          Bit 13                            */
-  return ((gpios>>9) & 0x03F) | (((gpios>>16) & 0x07F) << 6) | (((gpios>>26) & 0x001) << 13);
+  /*     Bits 0,1,2,3,4,5       Bits 6,7,8,9,10,11,12     Bit 13                   */
+  return ((gpios>>9) & 0x03F) | ((gpios>>10) & 0x1FC0) | ((gpios & 0x4000000) >> 13);
 }
 
 /*
