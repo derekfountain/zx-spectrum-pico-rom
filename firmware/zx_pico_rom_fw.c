@@ -9,15 +9,11 @@
 
 
 /* 1 instruction on the 133MHz microprocessor is 7.5ns */
+/* 1 instruction on the 140MHz microprocessor is 7.1ns */
 /* 1 instruction on the 200MHz microprocessor is 5.0ns */
-/* 1 instruction on the 270MHz microprocessor is 3.7ns */
-/* 1 instruction on the 360MHz microprocessor is 2.8ns */
 
 #define OVERCLOCK 140000
 //#define OVERCLOCK 200000
-//#define OVERCLOCK 250000
-//#define OVERCLOCK 270000
-//#define OVERCLOCK 360000
 
 #include "roms.h"
 
@@ -77,20 +73,6 @@ uint32_t create_gpios_for_address( uint32_t i )
   return gpio_pattern;
 }
 
-const uint32_t  A0_BIT_MASK  = ((uint32_t)1 <<  A0_GP);
-const uint32_t  A1_BIT_MASK  = ((uint32_t)1 <<  A1_GP);
-const uint32_t  A2_BIT_MASK  = ((uint32_t)1 <<  A2_GP);
-const uint32_t  A3_BIT_MASK  = ((uint32_t)1 <<  A3_GP);
-const uint32_t  A4_BIT_MASK  = ((uint32_t)1 <<  A4_GP);
-const uint32_t  A5_BIT_MASK  = ((uint32_t)1 <<  A5_GP);
-const uint32_t  A6_BIT_MASK  = ((uint32_t)1 <<  A6_GP);
-const uint32_t  A7_BIT_MASK  = ((uint32_t)1 <<  A7_GP);
-const uint32_t  A8_BIT_MASK  = ((uint32_t)1 <<  A8_GP);
-const uint32_t  A9_BIT_MASK  = ((uint32_t)1 <<  A9_GP);
-const uint32_t A10_BIT_MASK  = ((uint32_t)1 << A10_GP);
-const uint32_t A11_BIT_MASK  = ((uint32_t)1 << A11_GP);
-const uint32_t A12_BIT_MASK  = ((uint32_t)1 << A12_GP);
-const uint32_t A13_BIT_MASK  = ((uint32_t)1 << A13_GP);
 
 const uint8_t  D0_GP          = 0;
 const uint8_t  D1_GP          = 1;
@@ -131,7 +113,31 @@ const uint32_t DBUS_MASK     = ((uint32_t)1 << D0_GP) |
 
 #define STORE_SIZE 16384
 
+/*
+ * The 14 address bus bits arrive on the GPIOs in a weird pattern which is
+ * defined by the edge connector layout and the board design. Shifting all
+ * 14 bits into place works, but it's slow, it needs all 14 masks and shifts
+ * done each byte read from ROM. The Pico needs a significant overclock to
+ * manage that.
+ *
+ * This is an optimisation. Take the 14 address bus bits, which are scattered
+ * in the 32bit GPIO value, and shift them down into the lowest 14 bits of
+ * a 16 bit word. They're not in order A0 to A13, they're in some weird order.
+ * So this is a conversion table. The index into this is the weird 14 bit
+ * value, the value at that offset into this table is the actual address bus
+ * value the weird value represents.
+ *
+ * e.g. you might read the GPIOs, shuffle the 14 bits down and end with,
+ * say, 0x032A. Look up entry 0x032A in this table and find, say, 0x0001.
+ * That means when 0x32A appears on the mixed up address bus, the actual
+ * address bus value the Z80 has passed in is 0x0001. It wants that byte
+ * from the ROM.
+ *
+ * This table is filled in at the start; a lookup is done here for each
+ * ROM byte read.
+ */
 uint16_t address_indirection_table[ 16384 ];
+
 
 /*
  * The bits of the bytes in the ROM need shuffling around to match the
@@ -177,10 +183,20 @@ uint64_t get_time_us( void )
   return ((uint64_t)hi << 32u) | lo;
 }
 
+/*
+ * Populate the address bus indirection table.
+ */
 void create_indirection_table( void )
 {
   uint32_t i;
 
+  /*
+   * Loop over all 16384 address the Z80 might ask for. For each one calculate
+   * the pattern of the GPIOs when that value is on the address bus. Then pack
+   * that pattern down into the lowest 14 bits. That's the value which is
+   * found for each read byte, so the value at that offset into the table is
+   * the original value which will match what the Z80's after.
+   */
   for( i=0; i<16384; i++ )
   {
     uint32_t raw_bit_pattern = create_gpios_for_address( i );
@@ -193,17 +209,11 @@ void create_indirection_table( void )
   return;
 }
 
+
+
 int main()
 {
   bi_decl(bi_program_description("ZX Spectrum Pico ROM board binary."));
-
-  /* All interrupts off */
-#ifdef OVERCLOCK
-#if OVERCLOCK > 270000
-  vreg_set_voltage(VREG_VOLTAGE_1_20);
-  sleep_ms(1000);
-#endif
-#endif
 
 #ifdef OVERCLOCK
   set_sys_clock_khz( OVERCLOCK, 1 );
@@ -217,13 +227,16 @@ int main()
   gpio_init( PICO_RESET_Z80_GP );  gpio_set_dir( PICO_RESET_Z80_GP, GPIO_OUT );
   gpio_put( PICO_RESET_Z80_GP, 1 );
 
+  /* All interrupts off */
   irq_set_mask_enabled( 0xFFFFFFFF, 0 );
 
-  /* Create address indirection table */
+  /* Create address indirection table, this is the address bus optimisation  */
   create_indirection_table();
 
-  /* Default to a copy of the ZX ROM (or whatever is in roms slot 0). */
+  /* Switch the bits in the ROM bytes around, this is the data bus optimisation */
   preconvert_roms();
+
+  /* Default to a copy of the ZX ROM (or whatever is in roms slot 0). */
   uint8_t current_rom_index = 0;
   uint8_t *rom_image_ptr = roms[ current_rom_index ];
 
