@@ -84,7 +84,7 @@
       (mirror false)
       (drillshape 0)
       (scaleselection 1)
-      (outputdirectory "fab1.0")
+      (outputdirectory "fab1.1")
     )
   )
 
@@ -481,9 +481,9 @@
     (fp_line (start 1.6 0.8) (end -1.6 0.8) (layer "F.Fab") (width 0.1) (tstamp 62876e42-fb4a-4101-9cf9-b975f396a38f))
     (fp_line (start -1.6 -0.8) (end 1.6 -0.8) (layer "F.Fab") (width 0.1) (tstamp 73911c0c-3f9f-43ff-9bb9-7729edc66ffe))
     (fp_line (start 1.6 -0.8) (end 1.6 0.8) (layer "F.Fab") (width 0.1) (tstamp ba59e01f-dc70-441a-ae9f-5d35c34b69ae))
-    (pad "1" smd roundrect (at -1.55 0 90) (size 1.3 1.75) (layers "F.Cu" "F.Paste" "F.Mask") (roundrect_rratio 0.192308)
+    (pad "1" smd roundrect (at -1.55 0 90) (size 1.3 1.75) (layers "F.Cu" "F.Paste" "F.Mask") (roundrect_rratio 0.1923076923)
       (net 86 "PICO_RESET_Z80") (pintype "passive") (tstamp e36380f9-016a-440d-82fc-9777cc11d935))
-    (pad "2" smd roundrect (at 1.55 0 90) (size 1.3 1.75) (layers "F.Cu" "F.Paste" "F.Mask") (roundrect_rratio 0.192308)
+    (pad "2" smd roundrect (at 1.55 0 90) (size 1.3 1.75) (layers "F.Cu" "F.Paste" "F.Mask") (roundrect_rratio 0.1923076923)
       (net 59 "Net-(Q1-Pad2)") (pintype "passive") (tstamp 75259eed-d9d0-43d3-afcb-a27c337abac6))
     (model "${KICAD6_3DMODEL_DIR}/Resistor_SMD.3dshapes/R_1206_3216Metric.wrl"
       (offset (xyz 0 0 0))
@@ -1054,9 +1054,9 @@
     (fp_line (start 1.6 0.8) (end 1.6 -0.8) (layer "F.Fab") (width 0.1) (tstamp a5db88bd-d175-4913-941f-acc797f62384))
     (fp_line (start -1.2 -0.8) (end -1.6 -0.4) (layer "F.Fab") (width 0.1) (tstamp b47278a6-8931-448f-854b-465cfced4519))
     (fp_line (start -1.6 0.8) (end 1.6 0.8) (layer "F.Fab") (width 0.1) (tstamp f8e34385-fce5-4b4a-8ad1-6b692862a744))
-    (pad "1" smd roundrect (at -1.4875 0 180) (size 1.425 1.75) (layers "F.Cu" "F.Paste" "F.Mask") (roundrect_rratio 0.175439)
+    (pad "1" smd roundrect (at -1.4875 0 180) (size 1.425 1.75) (layers "F.Cu" "F.Paste" "F.Mask") (roundrect_rratio 0.1754392982)
       (net 4 "Net-(D1-Pad1)") (pinfunction "K") (pintype "passive") (tstamp 8facb0c3-b652-4c89-8cff-eac9444ecbed))
-    (pad "2" smd roundrect (at 1.4875 0 180) (size 1.425 1.75) (layers "F.Cu" "F.Paste" "F.Mask") (roundrect_rratio 0.175439)
+    (pad "2" smd roundrect (at 1.4875 0 180) (size 1.425 1.75) (layers "F.Cu" "F.Paste" "F.Mask") (roundrect_rratio 0.1754392982)
       (net 3 "+5V") (pinfunction "A") (pintype "passive") (tstamp c7abbec6-9b4a-4942-b8e1-141888bbfc0c))
     (model "${KICAD6_3DMODEL_DIR}/Diode_SMD.3dshapes/D_1206_3216Metric.wrl"
       (offset (xyz 0 0 0))
