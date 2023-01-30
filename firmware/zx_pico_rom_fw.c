@@ -260,7 +260,7 @@ int main()
 	
 	/* Wait for the button to be released. Pause is to debounce */
 	while( (gpio_get_all() & PICO_USER_INPUT_BIT_MASK) );
-	busy_wait_us_32(50000);
+	busy_wait_us_32(1000000);
 
 	gpio_put( PICO_RESET_Z80_GP, 0 );
 
