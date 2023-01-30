@@ -13,8 +13,9 @@
 /* 1 instruction on the 270MHz microprocessor is 3.7ns */
 /* 1 instruction on the 360MHz microprocessor is 2.8ns */
 
+#define OVERCLOCK 140000
 //#define OVERCLOCK 200000
-#define OVERCLOCK 250000
+//#define OVERCLOCK 250000
 //#define OVERCLOCK 270000
 //#define OVERCLOCK 360000
 
@@ -40,6 +41,41 @@ const uint8_t A10_GP         = 17;
 const uint8_t A11_GP         = 16;
 const uint8_t A12_GP         = 10;
 const uint8_t A13_GP         = 9;
+
+/*
+ * Given the GPIOs with an address bus value on them, this packs the
+ * 14 address bits down into the least significant 14 bits
+ */
+inline uint16_t pack_address_gpios( uint32_t gpios )
+{
+/*       Bits 0,1,2,3,4,5       Bits 6,7,8,9,10,11,12          Bit 13                            */
+  return ((gpios>>9) & 0x03F) | (((gpios>>16) & 0x07F) << 6) | (((gpios>>26) & 0x001) << 13);
+}
+
+/*
+ * Given value i, this calculates the pattern of the GPIOs if
+ * value i were to appear on the Z80 address bus.
+ */
+uint32_t create_gpios_for_address( uint32_t i )
+{
+  uint32_t gpio_pattern = 
+    ( ((i & 0x0001) >>  0) <<  A0_GP ) |
+    ( ((i & 0x0002) >>  1) <<  A1_GP ) |
+    ( ((i & 0x0004) >>  2) <<  A2_GP ) |
+    ( ((i & 0x0008) >>  3) <<  A3_GP ) |
+    ( ((i & 0x0010) >>  4) <<  A4_GP ) |
+    ( ((i & 0x0020) >>  5) <<  A5_GP ) |
+    ( ((i & 0x0040) >>  6) <<  A6_GP ) |
+    ( ((i & 0x0080) >>  7) <<  A7_GP ) |
+    ( ((i & 0x0100) >>  8) <<  A8_GP ) |
+    ( ((i & 0x0200) >>  9) <<  A9_GP ) |
+    ( ((i & 0x0400) >> 10) << A10_GP ) |
+    ( ((i & 0x0800) >> 11) << A11_GP ) |
+    ( ((i & 0x1000) >> 12) << A12_GP ) |
+    ( ((i & 0x2000) >> 13) << A13_GP );
+
+  return gpio_pattern;
+}
 
 const uint32_t  A0_BIT_MASK  = ((uint32_t)1 <<  A0_GP);
 const uint32_t  A1_BIT_MASK  = ((uint32_t)1 <<  A1_GP);
@@ -95,6 +131,8 @@ const uint32_t DBUS_MASK     = ((uint32_t)1 << D0_GP) |
 
 #define STORE_SIZE 16384
 
+uint16_t address_indirection_table[ 16384 ];
+
 /*
  * The bits of the bytes in the ROM need shuffling around to match the
  * ordering of the D0-D7 bits on the output GPIOs. See the schematic.
@@ -139,6 +177,22 @@ uint64_t get_time_us( void )
   return ((uint64_t)hi << 32u) | lo;
 }
 
+void create_indirection_table( void )
+{
+  uint32_t i;
+
+  for( i=0; i<16384; i++ )
+  {
+    uint32_t raw_bit_pattern = create_gpios_for_address( i );
+
+    uint32_t packed_bit_pattern = pack_address_gpios( raw_bit_pattern );
+
+    address_indirection_table[packed_bit_pattern] = i;
+  }
+
+  return;
+}
+
 int main()
 {
   bi_decl(bi_program_description("ZX Spectrum Pico ROM board binary."));
@@ -164,6 +218,9 @@ int main()
   gpio_put( PICO_RESET_Z80_GP, 1 );
 
   irq_set_mask_enabled( 0xFFFFFFFF, 0 );
+
+  /* Create address indirection table */
+  create_indirection_table();
 
   /* Default to a copy of the ZX ROM (or whatever is in roms slot 0). */
   preconvert_roms();
@@ -270,32 +327,14 @@ int main()
       }
     }
 
-    register uint16_t rom_address =
-      ( ((A13_BIT_MASK & gpios_state) != 0) << 13 ) |
-      ( ((A12_BIT_MASK & gpios_state) != 0) << 12 ) |
-      ( ((A11_BIT_MASK & gpios_state) != 0) << 11 ) |
-      ( ((A10_BIT_MASK & gpios_state) != 0) << 10 ) |
-      ( (( A9_BIT_MASK & gpios_state) != 0) <<  9 ) |
-      ( (( A8_BIT_MASK & gpios_state) != 0) <<  8 ) |
-      ( (( A7_BIT_MASK & gpios_state) != 0) <<  7 ) |
-      ( (( A6_BIT_MASK & gpios_state) != 0) <<  6 ) |
-      ( (( A5_BIT_MASK & gpios_state) != 0) <<  5 ) |
-      ( (( A4_BIT_MASK & gpios_state) != 0) <<  4 ) |
-      ( (( A3_BIT_MASK & gpios_state) != 0) <<  3 ) |
-      ( (( A2_BIT_MASK & gpios_state) != 0) <<  2 ) |
-      ( (( A1_BIT_MASK & gpios_state) != 0) <<  1 ) |
-      ( (( A0_BIT_MASK & gpios_state) != 0) <<  0 );
+    register uint16_t raw_bit_pattern = pack_address_gpios( gpios_state );
 
-    // Without the /WR check this point is at 65ns 270MHz
-    // With    the /WR check this point is at 75ns 270MHz		 
+    register uint16_t rom_address = address_indirection_table[raw_bit_pattern];
 
     register uint8_t rom_value = *(rom_image_ptr+rom_address);
 
     /* The level shifter is enabled via hardware, so just set the GPIOs */
     gpio_put_masked( DBUS_MASK, rom_value );
-
-    // With the /WR check this point is at 325ns 250MHz
-    // With the /WR check this point is at 300ns 270MHz
 
     /*
      * Spin until the Z80 releases MREQ indicating the read is complete.
