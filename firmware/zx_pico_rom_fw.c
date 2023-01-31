@@ -169,10 +169,10 @@ void preconvert_rom( uint8_t rom_index )
 void preconvert_roms( void )
 {
   uint8_t rom_index;
-  for( rom_index = 0; rom_index < num_roms; rom_index++ )
+  for( rom_index = 0; rom_index < num_roms+1; rom_index++ )
   {
     preconvert_rom( rom_index );
-  }
+  }  
 }
 
 /* From the timer_lowlevel.c example */
@@ -210,6 +210,28 @@ void create_indirection_table( void )
 }
 
 
+/* Default to a copy of the ZX ROM (or whatever is in roms slot 0). */
+uint8_t current_rom_index = 0;
+uint8_t *rom_image_ptr = roms[ 0 ].rom_data;
+
+
+int64_t switcher_alarm_func( alarm_id_t id, void *user_data )
+{
+  gpio_put(LED_PIN, 1);
+	
+  if( ++current_rom_index == num_roms ) current_rom_index=0;
+  rom_image_ptr = roms[ current_rom_index ].rom_data;
+
+  gpio_put( PICO_RESET_Z80_GP, 1 );
+  busy_wait_us_32(5000);
+  gpio_put( PICO_RESET_Z80_GP, 0 );
+
+  gpio_put(LED_PIN, 0);
+
+  return 0;
+}
+
+
 
 int main()
 {
@@ -227,18 +249,15 @@ int main()
   gpio_init( PICO_RESET_Z80_GP );  gpio_set_dir( PICO_RESET_Z80_GP, GPIO_OUT );
   gpio_put( PICO_RESET_Z80_GP, 1 );
 
-  /* All interrupts off */
+  /* All interrupts off except the timers */
   irq_set_mask_enabled( 0xFFFFFFFF, 0 );
+  irq_set_mask_enabled( 0x0000000F, 1 );
 
   /* Create address indirection table, this is the address bus optimisation  */
   create_indirection_table();
 
   /* Switch the bits in the ROM bytes around, this is the data bus optimisation */
   preconvert_roms();
-
-  /* Default to a copy of the ZX ROM (or whatever is in roms slot 0). */
-  uint8_t current_rom_index = 0;
-  uint8_t *rom_image_ptr = roms[ current_rom_index ].rom_data;
 
   /* Pull the buses to zeroes */
   gpio_init( A0_GP  ); gpio_set_dir( A0_GP,  GPIO_IN );  gpio_pull_down( A0_GP  );
@@ -291,6 +310,8 @@ int main()
 
   uint64_t debounce_timestamp_us = 0;
 
+  alarm_id_t switcher_alarm;
+
   while(1)
   {
     register uint32_t gpios_state;
@@ -323,18 +344,22 @@ int main()
 
  	gpio_put(LED_PIN, 1);
 	
-	if( ++current_rom_index == num_roms ) current_rom_index=0;
-	rom_image_ptr = roms[ current_rom_index ].rom_data;
+	rom_image_ptr = sw_rom;
 
 	gpio_put( PICO_RESET_Z80_GP, 1 );
 	
 	/* Wait for the button to be released. Pause is to debounce */
 	while( (gpio_get_all() & PICO_USER_INPUT_BIT_MASK) );
-	busy_wait_us_32(1000000);
+	busy_wait_us_32(500000);
 
 	gpio_put( PICO_RESET_Z80_GP, 0 );
 
 	gpio_put(LED_PIN, 0);
+
+	switcher_alarm = add_alarm_in_ms( 2000,
+					  switcher_alarm_func,
+					  NULL,
+					  0 );
 
 	continue;
       }
