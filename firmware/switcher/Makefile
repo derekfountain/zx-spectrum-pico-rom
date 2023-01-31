@@ -4,7 +4,8 @@
 #
 
 sw.rom : switcher.c
-	zcc +z80 -vn -startup=31 -lzx -clib=sdcc_iy switcher.c -o sw -create-app -s -m --list --c-code-in-asm -pragma-include:zpragma.inc
+	zcc +z80 -vn -startup=31 -lzx -clib=sdcc_iy switcher.c font.asm -o sw \
+			-create-app -s -m --list --c-code-in-asm -pragma-include:zpragma.inc
 	dd if=/dev/zero of=pad0 bs=16384 count=1
 	cat sw.rom pad0 > padded_rom
 	dd if=padded_rom of=test_switcher.rom bs=16384 count=1
