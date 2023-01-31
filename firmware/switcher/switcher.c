@@ -13,16 +13,16 @@
 
 void main(void)
 {
-  uint8_t *screen_addr = (uint8_t*)0x5800;
-  uint8_t blink = 0;
+  zx_cls( PAPER_WHITE|INK_BLACK );
+  zx_border(0);
 
+  uint8_t border_colour = INK_BLACK;
   while(1)
   {
-    if( blink)
-      *screen_addr = (PAPER_WHITE|INK_BLACK);
-    else
-      *screen_addr = (PAPER_GREEN|INK_WHITE);
-    
-    blink = !blink;
+    zx_border(border_colour);
+
+    if( border_colour++ == INK_WHITE )
+      border_colour = INK_BLACK;
   }
+
 }
