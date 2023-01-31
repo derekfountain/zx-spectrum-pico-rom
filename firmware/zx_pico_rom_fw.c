@@ -12,8 +12,8 @@
 /* 1 instruction on the 140MHz microprocessor is 7.1ns */
 /* 1 instruction on the 200MHz microprocessor is 5.0ns */
 
-//#define OVERCLOCK 140000
-#define OVERCLOCK 200000
+#define OVERCLOCK 140000
+//#define OVERCLOCK 200000
 
 #include "roms.h"
 
@@ -145,12 +145,10 @@ uint16_t address_indirection_table[ 16384 ];
  * Do this now so the pre-converted bytes can be put straight onto
  * the GPIOs at runtime.
  */
-void preconvert_rom( uint8_t rom_index )
+void preconvert_rom( uint8_t *image_ptr, uint32_t length )
 {
-  uint8_t *image_ptr = convert_roms[rom_index].rom_data;
-
   uint16_t conv_index;
-  for( conv_index=0; conv_index < convert_roms[rom_index].rom_size; conv_index++ )
+  for( conv_index=0; conv_index < length; conv_index++ )
   {
     uint8_t rom_byte = *(image_ptr+conv_index);
     *(image_ptr+conv_index) =  (rom_byte & 0x87)       |        /* bxxx xbbb */
@@ -161,6 +159,11 @@ void preconvert_rom( uint8_t rom_index )
   }
 }
 
+void preconvert_rom_image( uint8_t rom_index )
+{
+  preconvert_rom( cycle_roms[rom_index].rom_data, cycle_roms[rom_index].rom_size ); 
+}
+
 /*
  * Loop over all the ROM images in the header file and convert their bit
  * patterns to match the order of bits of the data bus. It's quicker to
@@ -169,11 +172,12 @@ void preconvert_rom( uint8_t rom_index )
 void preconvert_roms( void )
 {
   uint8_t rom_index;
-  for( rom_index = 0; rom_index < num_convert_roms; rom_index++ )
+  for( rom_index = 0; rom_index < num_cycle_roms; rom_index++ )
   {
-    preconvert_rom( rom_index );
+    preconvert_rom_image( rom_index );
   }  
 }
+
 
 /* From the timer_lowlevel.c example */
 uint64_t get_time_us( void )
@@ -260,6 +264,9 @@ int main()
 
   /* Create address indirection table, this is the address bus optimisation  */
   create_indirection_table();
+
+  /* Buffer to run the preconverted switcher ROM from */
+  uint8_t sw_rom_converted[ sw_rom_len ];
 
   /* Switch the bits in the ROM bytes around, this is the data bus optimisation */
   preconvert_roms();
@@ -349,8 +356,19 @@ int main()
 
  	gpio_put(LED_PIN, 1);
 	
-	/* Run utility ROM, this isn't one of the cycled ones */
-	rom_image_ptr = sw_rom;
+	/*
+	 * Run utility ROM, this isn't one of the cycled ones. The original switcher
+	 * ROM image is copied into the buffer, then the label put in place, then
+	 * the new switcher ROM image is converted to match the data bus pins.
+	 * That's the image that runs.
+	 * The string update is a hack; I just found where the original xxxxx string
+	 * landed in the switcher Z80 code and hardcoded the offset here. Could do
+	 * better. :)
+	 */
+	memcpy( sw_rom_converted, sw_rom, sw_rom_len );
+	memcpy( sw_rom_converted+290, cycle_roms[ current_rom_index ].rom_switcher_label, 32 );
+	preconvert_rom( sw_rom_converted, sw_rom_len );
+	rom_image_ptr = sw_rom_converted;
 
 	gpio_put( PICO_RESET_Z80_GP, 1 );
 	

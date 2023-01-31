@@ -21,10 +21,10 @@ void main(void)
   zx_border(0);
 
   print_str( 0,  1, " Raspberry Pi Pico ROM Emulator " );
-  print_str( 1,  2, "              v1.1              " );
+  print_str( 0,  2, "              v1.1              " );
 
-  print_str( 1, 11, "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" );
-  print_str( 1, 13, "          is loading...         " );
+  print_str( 0, 11, "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" );
+  print_str( 0, 13, "          is loading...         " );
 
   uint8_t border_colour = INK_BLACK;
   while(1)
