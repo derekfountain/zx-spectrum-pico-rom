@@ -12,6 +12,7 @@ if (TARGET tinyusb_device)
 
   add_executable(zx_pico_rom_fw
     zx_pico_rom_fw.c
+    roms.h
   )
 
   target_link_libraries(zx_pico_rom_fw pico_stdlib pico_mem_ops)

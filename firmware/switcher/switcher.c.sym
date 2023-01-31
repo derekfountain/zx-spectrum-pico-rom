@@ -1,0 +1,4 @@
+l_main_00105                    = $0001 ; addr, local, , , code_compiler, switcher.c:549
+l_main_00102                    = $000B ; addr, local, , , code_compiler, switcher.c:557
+l_main_00103                    = $0010 ; addr, local, , , code_compiler, switcher.c:561
+_main                           = $0000 ; addr, public, , , code_compiler, switcher.c:545

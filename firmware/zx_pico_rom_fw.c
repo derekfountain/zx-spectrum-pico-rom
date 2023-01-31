@@ -13,7 +13,7 @@
 /* 1 instruction on the 200MHz microprocessor is 5.0ns */
 
 //#define OVERCLOCK 140000
-//#define OVERCLOCK 200000
+#define OVERCLOCK 200000
 
 #include "roms.h"
 
@@ -147,10 +147,10 @@ uint16_t address_indirection_table[ 16384 ];
  */
 void preconvert_rom( uint8_t rom_index )
 {
-  uint8_t *image_ptr = roms[rom_index];
+  uint8_t *image_ptr = roms[rom_index].rom_data;
 
   uint16_t conv_index;
-  for( conv_index=0; conv_index < STORE_SIZE; conv_index++ )
+  for( conv_index=0; conv_index < roms[rom_index].rom_size; conv_index++ )
   {
     uint8_t rom_byte = *(image_ptr+conv_index);
     *(image_ptr+conv_index) =  (rom_byte & 0x87)       |        /* bxxx xbbb */
@@ -238,7 +238,7 @@ int main()
 
   /* Default to a copy of the ZX ROM (or whatever is in roms slot 0). */
   uint8_t current_rom_index = 0;
-  uint8_t *rom_image_ptr = roms[ current_rom_index ];
+  uint8_t *rom_image_ptr = roms[ current_rom_index ].rom_data;
 
   /* Pull the buses to zeroes */
   gpio_init( A0_GP  ); gpio_set_dir( A0_GP,  GPIO_IN );  gpio_pull_down( A0_GP  );
@@ -324,7 +324,7 @@ int main()
  	gpio_put(LED_PIN, 1);
 	
 	if( ++current_rom_index == num_roms ) current_rom_index=0;
-	rom_image_ptr = roms[ current_rom_index ];
+	rom_image_ptr = roms[ current_rom_index ].rom_data;
 
 	gpio_put( PICO_RESET_Z80_GP, 1 );
 	
