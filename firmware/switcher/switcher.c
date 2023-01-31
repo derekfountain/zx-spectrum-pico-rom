@@ -20,7 +20,11 @@ void main(void)
   zx_cls( PAPER_WHITE|INK_BLACK );
   zx_border(0);
 
-  print_str( 0, 12, "Hello world" );
+  print_str( 0,  1, " Raspberry Pi Pico ROM Emulator " );
+  print_str( 1,  2, "              v1.1              " );
+
+  print_str( 1, 11, "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" );
+  print_str( 1, 13, "          is loading...         " );
 
   uint8_t border_colour = INK_BLACK;
   while(1)
@@ -39,7 +43,7 @@ void print_str( uint8_t x, uint8_t y, uint8_t *str )
 
   for( i=0; i<strlen(str); i++ )
   {
-    uint8_t *addr = (uint8_t*)(0x4800+i); //zx_cxy2saddr(x+i, y);
+    uint8_t *addr = zx_cxy2saddr(x+i, y);
     print_char( addr, *(str+i) );
   }
 }
