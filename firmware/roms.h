@@ -4216,20 +4216,38 @@ typedef struct _rom_image
 {
   uint8_t  *rom_data;
   uint32_t  rom_size;
-  uint8_t   rom_switcher_label[33];
+  uint8_t  *rom_switcher_label;
 } ROM_IMAGE;
 
-const ROM_IMAGE roms[] =
+/*
+ * This is the list of ROM images which are cycled, in sequence, as the
+ * user presses the button for the next ROM
+ */
+const ROM_IMAGE cycle_roms[] =
 {
   {__ROMs_48_original_rom,          __ROMs_48_original_rom_len ,
   "   Retroleum Diagnostics v59    "},
+
   {__ROMs_retroleum_diag_v59_rom,   __ROMs_retroleum_diag_v59_rom_len ,
   "   GOSH Wonderful ROM v1.32     "},
+
   {__ROMs_gosh_wonderful_1_32_rom,  __ROMs_gosh_wonderful_1_32_rom_len ,
   " Original ZX Spectrum ROM 1982  "},
 
-  {sw_rom,                          sw_rom_len ,
-  NULL},
-  
 };
-uint8_t num_roms = (sizeof(roms) / sizeof(ROM_IMAGE))-1;
+
+/*
+ * This is the list of all the ROMs in the system, including unused ones,
+ * utility ones, etc. They all need converting at initialisation time so
+ * they will run if required. The label isn't needed here.
+ */
+const ROM_IMAGE convert_roms[] =
+{
+  {__ROMs_48_original_rom,          __ROMs_48_original_rom_len,         (uint8_t*)NULL},
+  {__ROMs_retroleum_diag_v59_rom,   __ROMs_retroleum_diag_v59_rom_len,  (uint8_t*)NULL},
+  {__ROMs_gosh_wonderful_1_32_rom,  __ROMs_gosh_wonderful_1_32_rom_len, (uint8_t*)NULL},
+  {sw_rom,                          sw_rom_len,                         (uint8_t*)NULL},
+};
+
+uint8_t num_cycle_roms   = (sizeof(cycle_roms)   / sizeof(ROM_IMAGE));
+uint8_t num_convert_roms = (sizeof(convert_roms) / sizeof(ROM_IMAGE));

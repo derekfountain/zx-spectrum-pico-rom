@@ -147,10 +147,10 @@ uint16_t address_indirection_table[ 16384 ];
  */
 void preconvert_rom( uint8_t rom_index )
 {
-  uint8_t *image_ptr = roms[rom_index].rom_data;
+  uint8_t *image_ptr = convert_roms[rom_index].rom_data;
 
   uint16_t conv_index;
-  for( conv_index=0; conv_index < roms[rom_index].rom_size; conv_index++ )
+  for( conv_index=0; conv_index < convert_roms[rom_index].rom_size; conv_index++ )
   {
     uint8_t rom_byte = *(image_ptr+conv_index);
     *(image_ptr+conv_index) =  (rom_byte & 0x87)       |        /* bxxx xbbb */
@@ -169,7 +169,7 @@ void preconvert_rom( uint8_t rom_index )
 void preconvert_roms( void )
 {
   uint8_t rom_index;
-  for( rom_index = 0; rom_index < num_roms+1; rom_index++ )
+  for( rom_index = 0; rom_index < num_convert_roms; rom_index++ )
   {
     preconvert_rom( rom_index );
   }  
@@ -210,17 +210,22 @@ void create_indirection_table( void )
 }
 
 
-/* Default to a copy of the ZX ROM (or whatever is in roms slot 0). */
+/* Default to a copy of the ZX ROM (or whatever is in cycle roms slot 0). */
 uint8_t current_rom_index = 0;
-uint8_t *rom_image_ptr = roms[ 0 ].rom_data;
+uint8_t *rom_image_ptr = cycle_roms[ 0 ].rom_data;
 
-
+/*
+ * Switcher function. When the user clicks the button to move to the next ROM
+ * the utility switcher ROM is loaded which presents a banner saying which
+ * ROM is about to appear. That stays for a moment, then this function runs.
+ * This switches that switcher ROM out and loads the next ROM in the cycle.
+ */
 int64_t switcher_alarm_func( alarm_id_t id, void *user_data )
 {
   gpio_put(LED_PIN, 1);
 	
-  if( ++current_rom_index == num_roms ) current_rom_index=0;
-  rom_image_ptr = roms[ current_rom_index ].rom_data;
+  if( ++current_rom_index == num_cycle_roms ) current_rom_index=0;
+  rom_image_ptr = cycle_roms[ current_rom_index ].rom_data;
 
   gpio_put( PICO_RESET_Z80_GP, 1 );
   busy_wait_us_32(5000);
@@ -338,25 +343,30 @@ int main()
       {
 	/*
 	 * Switch ROMs. The Pico's LED is lit to show that something is happening,
-	 * the ROM image is advanced and the ZX is reset. Wait for the button to
-	 * be released, then we're done.
+	 * the switcher ROM image is loaded to present a label on the Spectrum
+	 * screen, and the ZX is reset. Wait for the button to be released.
 	 */
 
  	gpio_put(LED_PIN, 1);
 	
+	/* Run utility ROM, this isn't one of the cycled ones */
 	rom_image_ptr = sw_rom;
 
 	gpio_put( PICO_RESET_Z80_GP, 1 );
 	
 	/* Wait for the button to be released. Pause is to debounce */
 	while( (gpio_get_all() & PICO_USER_INPUT_BIT_MASK) );
-	busy_wait_us_32(500000);
+	busy_wait_us_32(600000);
 
 	gpio_put( PICO_RESET_Z80_GP, 0 );
 
 	gpio_put(LED_PIN, 0);
 
-	switcher_alarm = add_alarm_in_ms( 2000,
+	/*
+	 * Show the switcher ROM for a moment, then use an alarm to switch in the
+	 * next ROM we're going to cycle to
+	 */
+	switcher_alarm = add_alarm_in_ms( 1200,
 					  switcher_alarm_func,
 					  NULL,
 					  0 );
