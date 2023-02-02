@@ -1,3 +1,5 @@
+#define ZX_IF1_VERSION 1
+
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
@@ -10,10 +12,11 @@
 
 /* 1 instruction on the 133MHz microprocessor is 7.5ns */
 /* 1 instruction on the 140MHz microprocessor is 7.1ns */
+/* 1 instruction on the 150MHz microprocessor is 6.6ns */
 /* 1 instruction on the 200MHz microprocessor is 5.0ns */
 
-#define OVERCLOCK 140000
-//#define OVERCLOCK 200000
+//#define OVERCLOCK 150000
+#define OVERCLOCK 200000
 
 #include "roms.h"
 
@@ -98,9 +101,13 @@ const uint32_t ROM_ACCESS_BIT_MASK      = ((uint32_t)1 << ROM_ACCESS_GP);
 /* This pin triggers a transistor which shorts the Z80's /RESET to ground */
 const uint8_t  PICO_RESET_Z80_GP        = 28;
 
+#if !ZX_IF1_VERSION
+
 /* This pin sits low; it's switched to high. That's the user input */
 const uint8_t  PICO_USER_INPUT_GP       = 27;
 const uint32_t PICO_USER_INPUT_BIT_MASK = ((uint32_t)1 << PICO_USER_INPUT_GP);
+
+#endif
 
 const uint32_t DBUS_MASK     = ((uint32_t)1 << D0_GP) |
                                ((uint32_t)1 << D1_GP) |
@@ -214,9 +221,31 @@ void create_indirection_table( void )
 }
 
 
+#if !ZX_IF1_VERSION
+
 /* Default to a copy of the ZX ROM (or whatever is in cycle roms slot 0). */
 uint8_t current_rom_index = 0;
 uint8_t *rom_image_ptr = cycle_roms[ 0 ].rom_data;
+
+#else
+
+uint8_t *rom_image_ptr = __ROMs_48_original_rom;
+
+#endif
+
+
+/*
+ * This is called by an alarm function at startup. It just resets
+ * the Z80 by pulling the Pico's GPIO low
+ */
+int64_t initial_reset_alarm_func( alarm_id_t id, void *user_data )
+{
+  gpio_put( PICO_RESET_Z80_GP, 0 );
+  return 0;
+}
+
+
+#if !ZX_IF1_VERSION
 
 /*
  * Switcher function. When the user clicks the button to move to the next ROM
@@ -240,6 +269,7 @@ int64_t switcher_alarm_func( alarm_id_t id, void *user_data )
   return 0;
 }
 
+#endif
 
 
 int main()
@@ -300,9 +330,13 @@ int main()
   gpio_init( ROM_ACCESS_GP ); gpio_set_dir( ROM_ACCESS_GP, GPIO_IN );
   gpio_pull_down( ROM_ACCESS_GP );
 
+#if !ZX_IF1_VERSION
+
   /* Set up Pico's user input pin, pull to zero, switch will send it to 1 */
   gpio_init( PICO_USER_INPUT_GP ); gpio_set_dir( PICO_USER_INPUT_GP, GPIO_IN );
   gpio_pull_down( PICO_USER_INPUT_GP );
+
+#endif
 
   /* Blip LED to show we're running */
   gpio_init(LED_PIN);
@@ -317,16 +351,31 @@ int main()
   }
   gpio_put(LED_PIN, 0);
 
-  /* Ready to go, let the Z80 start */
-  gpio_put( PICO_RESET_Z80_GP, 0 );
+
+#if !ZX_IF1_VERSION
+
+  alarm_id_t switcher_alarm;
+
+#endif
+
+
+  /*
+   * Ready to go, give it a few milliseconds for this Pico code to get into
+   * its main loop, then let the Z80 start
+   */
+  alarm_id_t init_alarm = add_alarm_in_ms( 100,
+					   initial_reset_alarm_func,
+					   NULL,
+					   0 );
 
   uint64_t debounce_timestamp_us = 0;
 
-  alarm_id_t switcher_alarm;
 
   while(1)
   {
     register uint32_t gpios_state;
+
+#if !ZX_IF1_VERSION
 
     /*
      * Spin while the hardware is saying at least one of A14, A15 and MREQ is 1.
@@ -337,6 +386,18 @@ int main()
 	   &&
 	   ( (gpios_state & PICO_USER_INPUT_BIT_MASK) == 0 ) );
 
+#else
+
+    /*
+     * Spin while the hardware is saying at least one of A14, A15 and MREQ is 1.
+     * ROM_ACCESS is active low - if it's 1 then the ROM is not being accessed.
+     */
+    while( (gpios_state=gpio_get_all()) & ROM_ACCESS_BIT_MASK );
+
+#endif
+
+
+#if !ZX_IF1_VERSION
 
     /* If the user button is pressed, change ROM then reset */
     if( gpios_state & PICO_USER_INPUT_BIT_MASK )
@@ -393,6 +454,8 @@ int main()
       }
     }
 
+#endif
+
     register uint16_t raw_bit_pattern = pack_address_gpios( gpios_state );
 
     register uint16_t rom_address = address_indirection_table[raw_bit_pattern];
@@ -407,6 +470,21 @@ int main()
      * ROM_ACCESS is active low - if it's 0 then the ROM is still being accessed.
      */
     while( (gpio_get_all() & ROM_ACCESS_BIT_MASK) == 0 );
+
+#if ZX_IF1_VERSION
+
+    if( ((rom_address == 0x0008) || (rom_address == 0x1708)) && (rom_image_ptr == __ROMs_48_original_rom) )
+    {
+      gpio_put(LED_PIN, 1);
+      rom_image_ptr = __ROMs_if1_rom;
+    }
+    else if( (rom_address == 0x0700) && (rom_image_ptr == __ROMs_if1_rom) )
+    {
+      rom_image_ptr = __ROMs_48_original_rom;
+      gpio_put(LED_PIN, 0);
+    }
+
+#endif
 
     /*
      * Just leave the value there. The level shifter gets turned off by hardware
