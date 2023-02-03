@@ -1,4 +1,4 @@
-#define ZX_IF1_VERSION 1
+#define ZX_IF1_VERSION 0
 
 #include <stdio.h>
 #include <stdint.h>
@@ -15,8 +15,8 @@
 /* 1 instruction on the 150MHz microprocessor is 6.6ns */
 /* 1 instruction on the 200MHz microprocessor is 5.0ns */
 
-//#define OVERCLOCK 150000
-#define OVERCLOCK 200000
+#define OVERCLOCK 150000
+//#define OVERCLOCK 200000
 
 #include "roms.h"
 
@@ -117,8 +117,6 @@ const uint32_t DBUS_MASK     = ((uint32_t)1 << D0_GP) |
                                ((uint32_t)1 << D5_GP) |
                                ((uint32_t)1 << D6_GP) |
                                ((uint32_t)1 << D7_GP);
-
-#define STORE_SIZE 16384
 
 /*
  * The 14 address bus bits arrive on the GPIOs in a weird pattern which is
@@ -354,7 +352,7 @@ int main()
 
 #if !ZX_IF1_VERSION
 
-  alarm_id_t switcher_alarm;
+  uint64_t debounce_timestamp_us = 0;
 
 #endif
 
@@ -363,12 +361,7 @@ int main()
    * Ready to go, give it a few milliseconds for this Pico code to get into
    * its main loop, then let the Z80 start
    */
-  alarm_id_t init_alarm = add_alarm_in_ms( 100,
-					   initial_reset_alarm_func,
-					   NULL,
-					   0 );
-
-  uint64_t debounce_timestamp_us = 0;
+  add_alarm_in_ms( 50, initial_reset_alarm_func, NULL, 0 );
 
 
   while(1)
@@ -445,10 +438,7 @@ int main()
 	 * Show the switcher ROM for a moment, then use an alarm to switch in the
 	 * next ROM we're going to cycle to
 	 */
-	switcher_alarm = add_alarm_in_ms( 1200,
-					  switcher_alarm_func,
-					  NULL,
-					  0 );
+	add_alarm_in_ms( 1200, switcher_alarm_func, NULL, 0 );
 
 	continue;
       }
@@ -473,12 +463,12 @@ int main()
 
 #if ZX_IF1_VERSION
 
-    if( ((rom_address == 0x0008) || (rom_address == 0x1708)) && (rom_image_ptr == __ROMs_48_original_rom) )
+    if( (rom_address == 0x0008) || (rom_address == 0x1708) )
     {
       gpio_put(LED_PIN, 1);
       rom_image_ptr = __ROMs_if1_rom;
     }
-    else if( (rom_address == 0x0700) && (rom_image_ptr == __ROMs_if1_rom) )
+    else if( rom_address == 0x0700 )
     {
       rom_image_ptr = __ROMs_48_original_rom;
       gpio_put(LED_PIN, 0);
