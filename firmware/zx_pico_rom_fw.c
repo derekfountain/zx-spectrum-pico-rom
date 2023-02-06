@@ -1,3 +1,23 @@
+/*
+ * ZX Pico ROM Firmware, a Raspberry Pi Pico based ZX Spectrum ROM emulator
+ * Copyright (C) 2023 Derek Fountain
+ * 
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+
+/* Switch out the multiple ROM features, switch in the Interface One paging */
 #define ZX_IF1_VERSION 0
 
 #include <stdio.h>
@@ -465,13 +485,13 @@ int main()
 
     if( (rom_address == 0x0008) || (rom_address == 0x1708) )
     {
-      gpio_put(LED_PIN, 1);
+      // gpio_put(LED_PIN, 1);
       rom_image_ptr = __ROMs_if1_rom;
     }
     else if( rom_address == 0x0700 )
     {
       rom_image_ptr = __ROMs_48_original_rom;
-      gpio_put(LED_PIN, 0);
+      // gpio_put(LED_PIN, 0);
     }
 
 #endif
