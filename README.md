@@ -52,3 +52,25 @@ So all possible, just about. I've created a board and sent it off
 for fabrication. Let's see if it works. Details can follow.
 
 4th Jan 2023
+
+
+## Update 6th Feb 2023
+
+The board came back and I got it working. I've sent v1.1 off. It has
+a few tidy ups, a switch for changing ROM, and the /RESET line controlled
+by the Pico. The firmware has a small switcher ROM added so the user can
+see which ROM is being paged in by the button press.
+
+I created an Interface One ROM and updated the firmware with conditional
+compilation to have an IF1 version. This removes the switching stuff and
+presents the normal 1982 ROM, plus it has the IF1 magic-address switching.
+This is in hardware in the IF1, it's just a couple of lines of code in
+the Pico version. It doesn't quite work though because it needs the Z80's
+/M1 line fed into the Pico which v1.1 of the PCB doesn't have.
+
+The plan now is to make up a v1.1 board when they arrive from fabrication
+and call that the final version of the switching ROM.
+
+I've added the /M1 tweak; that, plus the latest firmware, will be v1.2
+which will be the basis for another project, that of creating a Pico-based
+Interface One. For the original project v1.2 offers nothing v1.1 doesn't.
