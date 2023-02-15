@@ -2,4 +2,5 @@
   (lib (name "zxbus")(type "Legacy")(uri "${KIPRJMOD}/zxbus.lib")(options "")(descr ""))
   (lib (name "rp-pico")(type "Legacy")(uri "${KIPRJMOD}/rp-pico.lib")(options "")(descr ""))
   (lib (name "pico-sym")(type "KiCad")(uri "${KIPRJMOD}/KiCad-RP-Pico/RP-Pico Libraries/MCU_RaspberryPi_and_Boards.kicad_sym")(options "")(descr ""))
+  (lib (name "pmbt2222a")(type "KiCad")(uri "${KIPRJMOD}/pmbt2222a.kicad_sym")(options "")(descr ""))
 )

@@ -42,4 +42,22 @@ the build. I think a brief press will select the next ROM and reset
 the Z80, a long press can reboot the Pico itself.
 
 
+In order for the Interface One ROM to page at the correct time I
+need the Z80's /M1 signal. It's sort of a side point for the
+purpose of this device, but will be useful for testing as I start
+the IF1 project. I have a spare level shift and GPIO on the Pico.
+
+
 I need +5V and 3V3 test points.
+
+
+v1.1
+====
+
+The footprint for the right angle 6x6mm switch is wrong.
+Button_Switch_THT:SW_Tactile_SKHH_Angled looks like a better option.
+Fixed for v1.2.
+
+The NPN2222 SMD transistor has a different pinout to the TTH hole I
+used for prototyping. I created a new symbol with correct footprint
+for v1.2.
