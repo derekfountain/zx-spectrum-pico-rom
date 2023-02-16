@@ -109,6 +109,12 @@ the Pico to reliably return the data value inside that time frame. Much
 to my frustration, v1.2 of the software still requires an overclock from
 133MHz to 140MHz.
 
+The Z80 starts up faster than the Pico which requires half a second or
+so to get going. This means the Z80 is asking for ROM instructions 
+before the Pico is ready to provide them. The Pico resets the Z80 as
+soon as it, the Pico, is ready to go. That's why there's a colourful
+display of randomness for a moment at startup.
+
 ## ROM Images
 
 The device is permanently enabled; the original ROM chip in the
@@ -170,7 +176,8 @@ idea. The joys of programmable devices like the Pico, as opposed to
 hardware. :)
 
 There's a macro in the firmware source to switch in an early IF1 paging
-version of the code.
+version of the code. It seems unreliable, but I won't be persuing this
+any further with this project.
 
 ## Licence
 
