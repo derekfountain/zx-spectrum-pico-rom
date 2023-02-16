@@ -253,10 +253,10 @@ uint8_t *rom_image_ptr = __ROMs_48_original_rom;
 
 
 /*
- * This is called by an alarm function at startup. It just resets
- * the Z80 by pulling the Pico's GPIO low
+ * This is called by an alarm function. It lets the Z80 run by pulling the
+ * Pico's controlling GPIO low
  */
-int64_t initial_reset_alarm_func( alarm_id_t id, void *user_data )
+int64_t start_z80_alarm_func( alarm_id_t id, void *user_data )
 {
   gpio_put( PICO_RESET_Z80_GP, 0 );
   return 0;
@@ -273,8 +273,8 @@ int64_t initial_reset_alarm_func( alarm_id_t id, void *user_data )
  */
 int64_t switcher_alarm_func( alarm_id_t id, void *user_data )
 {
-  gpio_put(LED_PIN, 1);
-	
+  gpio_put( PICO_RESET_Z80_GP, 1 );
+
   if( ++current_rom_index == num_cycle_roms ) current_rom_index=0;
   rom_image_ptr = cycle_roms[ current_rom_index ].rom_data;
 
@@ -282,7 +282,8 @@ int64_t switcher_alarm_func( alarm_id_t id, void *user_data )
   busy_wait_us_32(5000);
   gpio_put( PICO_RESET_Z80_GP, 0 );
 
-  gpio_put(LED_PIN, 0);
+  /* Give this code a moment to get back to the top, then release the Z80 */
+  add_alarm_in_ms( 5, start_z80_alarm_func, NULL, 0 );
 
   return 0;
 }
@@ -381,7 +382,7 @@ int main()
    * Ready to go, give it a few milliseconds for this Pico code to get into
    * its main loop, then let the Z80 start
    */
-  add_alarm_in_ms( 50, initial_reset_alarm_func, NULL, 0 );
+  add_alarm_in_ms( 5, start_z80_alarm_func, NULL, 0 );
 
 
   while(1)
@@ -450,7 +451,8 @@ int main()
 	while( (gpio_get_all() & PICO_USER_INPUT_BIT_MASK) );
 	busy_wait_us_32(600000);
 
-	gpio_put( PICO_RESET_Z80_GP, 0 );
+	/* Give this code a moment to get back to the top, then release the Z80 */
+	add_alarm_in_ms( 5, start_z80_alarm_func, NULL, 0 );
 
 	gpio_put(LED_PIN, 0);
 
