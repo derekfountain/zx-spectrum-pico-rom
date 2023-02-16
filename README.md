@@ -74,3 +74,17 @@ and call that the final version of the switching ROM.
 I've added the /M1 tweak; that, plus the latest firmware, will be v1.2
 which will be the basis for another project, that of creating a Pico-based
 Interface One. For the original project v1.2 offers nothing v1.1 doesn't.
+
+## Update 15th Feb 2023
+
+I made up a v1.1 board. The switch footprint was wrong for the right
+angle switch I'd chosen. I also didn't realise the NP2222 TTH transistor
+which I used for prototyping has a different pin out to the SMD version
+of the device. Both these issues have been fixed in v1.2, now uploaded.
+
+I need to check the /M1 mod allows the IF1 ROM to work. Need to shoot
+a short video of the IF1 ROM working for SC. Take more photos. Do one
+with games ROMs and video that.
+
+Undecided about whether to have v1.2 fabricated. Probably won't, my
+tweaked v1.1 board is working. Need that /M1 check before I decide.
