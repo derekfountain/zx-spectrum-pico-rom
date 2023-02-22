@@ -179,6 +179,10 @@ There's a macro in the firmware source to switch in an early IF1 paging
 version of the code. It seems unreliable, but I won't be persuing this
 any further with this project.
 
+Note: the v1.1 board doesn't have the /M1 signal connected. The v1.2
+board has it connected into GPIO15. The software doesn't have the /M1
+signal taken into account as yet.
+
 ## Bill of Materials
 
 You will need:

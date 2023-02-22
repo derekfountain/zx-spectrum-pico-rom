@@ -58,6 +58,31 @@ The footprint for the right angle 6x6mm switch is wrong.
 Button_Switch_THT:SW_Tactile_SKHH_Angled looks like a better option.
 Fixed for v1.2.
 
+
 The NPN2222 SMD transistor has a different pinout to the TTH hole I
 used for prototyping. I created a new symbol with correct footprint
 for v1.2.
+
+
+The Pico receives a signal called ROM_ACCESS_INV, which is A14, A15
+and /MREQ ORed together. Unfortunately that logic allows memory
+refreshes through - see the Instruction Fetch section of the Z80
+manual. This made sense when the Pico had the /RD signal, but since
+that's now gone the Pico can't tell a read, write or refresh.
+That's bad for the Interface One paging mechanism which
+must only page with a memory read; a memory refresh of 0x0008 happens
+at Z80 startup. The solution appears to be to put the ROM_READ_INV
+signal through the level shifter and into the Pico instead of
+ROM_ACCESS_INV, but I haven't done it yet. Needs thinking through.
+For the IF1-demo use case /M1 can be used instead. /M1 goes high
+for the refresh part of the read so the Pico can see the page
+isn't required at that point. But see next point.
+
+
+The 1.1 boards were fabricated with the Pico's GP15 not connected to
+anything. It was /WR, which I disconnected. I intended to connect
+/M1 but didn't actually do so. If this board is to run the IF1 ROM
+switching reliably the /M1 signal will have to be put through the
+level shifter and into the Pico. PCB has been updated with this
+change for v1.2.
+
