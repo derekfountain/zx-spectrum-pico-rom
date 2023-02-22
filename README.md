@@ -179,6 +179,38 @@ There's a macro in the firmware source to switch in an early IF1 paging
 version of the code. It seems unreliable, but I won't be persuing this
 any further with this project.
 
+## Bill of Materials
+
+You will need:
+
+3x [74LS245 Bus transceiver](https://www.mouser.co.uk/ProductDetail/595-SN74LVC245ANSR)
+Bus transceiver, used as a level shifter
+<br>
+1x [3216 SMD Diode](https://www.mouser.co.uk/ProductDetail/581-SD1206S040S2R0)
+Schottky Diode for Pico input protection
+<br>
+1x [4075 OR gate](https://www.mouser.co.uk/ProductDetail/595-SN74HCS4075DR)
+3-way 3-input OR gate
+<br>
+4x [3216 SMD 0.1uF capacitor](https://www.mouser.co.uk/ProductDetail/581-12065C104KAT4A)
+Decoupling capacitor
+<br>
+1x [PMBT2222A SMD Transistor](https://www.mouser.co.uk/ProductDetail/771-PMBT2222A-T-R)
+NPN Transistor for /RESET
+<br>
+1x [3216 SMD 1K Resistor](https://www.mouser.co.uk/ProductDetail/603-RT1206FRE071KL)
+1K Resistor for /RESET
+
+Also:
+
+1x Raspberry Pi Pico with pins and sockets if you want them
+<br>
+1x ZX Spectrum Edge Connector socket
+<br>
+1x SPST switch any single pole, single throw switch to use as an input button. The footprint
+on the board matches one I happen to have had, assume you'll add it on flying leads.
+
+
 ## Licence
 
 Distributed as free software and hardware design under the GPL. The ROM
