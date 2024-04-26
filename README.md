@@ -187,7 +187,7 @@ signal taken into account as yet.
 
 You will need:
 
-3x [74LS245 Bus transceiver](https://www.mouser.co.uk/ProductDetail/595-SN74LVC245ANSR)
+3x [74LVC245 Bus transceiver](https://www.mouser.co.uk/ProductDetail/595-SN74LVC245ANSR)
 Bus transceiver, used as a level shifter
 <br>
 1x [3216 SMD Diode](https://www.mouser.co.uk/ProductDetail/581-SD1206S040S2R0)
