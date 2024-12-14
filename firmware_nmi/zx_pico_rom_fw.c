@@ -17,6 +17,12 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
+/*
+ * cmake -DCMAKE_BUILD_TYPE=Debug
+ * make -j10
+ * sudo openocd -f interface/picoprobe.cfg -f target/rp2040.cfg -c "program ./zx_pico_rom_fw.elf verify reset exit"
+ */
+
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
@@ -32,8 +38,8 @@
 /* 1 instruction on the 150MHz microprocessor is 6.6ns */
 /* 1 instruction on the 200MHz microprocessor is 5.0ns */
 
-#define OVERCLOCK 150000
-//#define OVERCLOCK 200000
+//#define OVERCLOCK 150000
+#define OVERCLOCK 200000
 
 #include "roms.h"
 
@@ -121,6 +127,9 @@ const uint8_t  PICO_RESET_Z80_GP        = 28;
 /* This pin sits low; it's switched to high. That's the user input */
 const uint8_t  PICO_USER_INPUT_GP       = 27;
 const uint32_t PICO_USER_INPUT_BIT_MASK = ((uint32_t)1 << PICO_USER_INPUT_GP);
+
+/* NMI output to Spectrum */
+const uint8_t NMI_GP         = 15;
 
 const uint32_t DBUS_MASK     = ((uint32_t)1 << D0_GP) |
                                ((uint32_t)1 << D1_GP) |
@@ -287,6 +296,10 @@ int main()
   gpio_init( PICO_USER_INPUT_GP ); gpio_set_dir( PICO_USER_INPUT_GP, GPIO_IN );
   gpio_pull_down( PICO_USER_INPUT_GP );
 
+  /* Set NMI output inactive */
+  gpio_init( NMI_GP ); gpio_set_dir( NMI_GP, GPIO_OUT );
+  gpio_put( NMI_GP, 1 );
+
   /* Blip LED to show we're running */
   gpio_init(LED_PIN);
   gpio_set_dir(LED_PIN, GPIO_OUT);
@@ -310,7 +323,8 @@ int main()
    */
   add_alarm_in_ms( 5, start_z80_alarm_func, NULL, 0 );
 
-
+  uint8_t user_button_pressed = 0;
+  uint32_t debounce_counter = 0;
   while(1)
   {
     register uint32_t gpios_state;
@@ -324,49 +338,64 @@ int main()
 	   &&
 	   ( (gpios_state & PICO_USER_INPUT_BIT_MASK) == 0 ) );
 
+    if( !(gpios_state & ROM_ACCESS_BIT_MASK) )
+    {
+      register uint16_t raw_bit_pattern = pack_address_gpios( gpios_state );
+
+      register uint16_t rom_address = address_indirection_table[raw_bit_pattern];
+
+      register uint8_t rom_value = *(rom_image_ptr+rom_address);
+
+      /* The level shifter is enabled via hardware, so just set the GPIOs */
+      gpio_put_masked( DBUS_MASK, rom_value );
+
+      /*
+       * Spin until the Z80 releases MREQ indicating the read is complete.
+       * ROM_ACCESS is active low - if it's 0 then the ROM is still being accessed.
+       */
+      while( (gpio_get_all() & ROM_ACCESS_BIT_MASK) == 0 );
+
+      /*
+       * Just leave the value there. The level shifter gets turned off by hardware
+       * which means the value will disappear from the Z80's view when the Z80's
+       * read is complete. At which point the GPIO's state doesn't matter.
+       */
+    }
 
     /* If the user button is pressed, fire the NMI */
     if( gpios_state & PICO_USER_INPUT_BIT_MASK )
     {
-      /* Debounce pause, the switch is a bit noisy */
-      if( (get_time_us() - debounce_timestamp_us) < 50000 )
+      if( !user_button_pressed )
       {
-	debounce_timestamp_us = get_time_us();
+	/*
+	 * Debounce with a counter, the switch is a bit noisy. Wait for this
+	 * many iterations of the loop to complete with the button down before
+	 * deciding the button is really down
+	 */
+	if( ++debounce_counter == 1000 )
+	{
+	  gpio_put(LED_PIN, 1);
+	
+	  user_button_pressed = 1;
+	}
+      }
+    }
+    else if( (gpios_state & PICO_USER_INPUT_BIT_MASK) == 0 )
+    {	
+      if( user_button_pressed )
+      {
+	/* Was pressed, now isn't, it's been released */
+	user_button_pressed = 0;
+	debounce_counter = 0;
+
+ 	gpio_put(LED_PIN, 0);
       }
       else
       {
- 	gpio_put(LED_PIN, 1);
-	
-	/* Wait for the button to be released. Pause is to debounce */
-	while( (gpio_get_all() & PICO_USER_INPUT_BIT_MASK) );
-	busy_wait_us_32(600000);
-
-	gpio_put(LED_PIN, 0);
-
-	continue;
+	/* Button is not pressed. reset the counter */
+	debounce_counter = 0;
       }
     }
-
-    register uint16_t raw_bit_pattern = pack_address_gpios( gpios_state );
-
-    register uint16_t rom_address = address_indirection_table[raw_bit_pattern];
-
-    register uint8_t rom_value = *(rom_image_ptr+rom_address);
-
-    /* The level shifter is enabled via hardware, so just set the GPIOs */
-    gpio_put_masked( DBUS_MASK, rom_value );
-
-    /*
-     * Spin until the Z80 releases MREQ indicating the read is complete.
-     * ROM_ACCESS is active low - if it's 0 then the ROM is still being accessed.
-     */
-    while( (gpio_get_all() & ROM_ACCESS_BIT_MASK) == 0 );
-
-    /*
-     * Just leave the value there. The level shifter gets turned off by hardware
-     * which means the value will disappear from the Z80's view when the Z80's
-     * read is complete. At which point the GPIO's state doesn't matter.
-     */
 
   } /* Infinite loop */
 
