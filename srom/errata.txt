@@ -86,3 +86,16 @@ switching reliably the /M1 signal will have to be put through the
 level shifter and into the Pico. PCB has been updated with this
 change for v1.2.
 
+
+v1.2
+====
+
+The switch (SW1) casing isn't connected to ground. This makes it
+susceptible to ESD: when I touch the switch's metal casing the
+Spectrum sometimes crashes or reset. I think the issue is capacitive
+coupling. Static from my fingertip goes through the capacitor formed
+by the switch casing on one side and the Pico/ZX circuit on the
+other, and the voltage ends up somewhere it shouldn't, like the Z80.
+I soldered a wire from the switch case to a ground point and that
+solved the issue.
+Fixed for v1.3. I set the switch anchor points to GND net.
