@@ -38,7 +38,7 @@
 /* 1 instruction on the 150MHz microprocessor is 6.6ns */
 /* 1 instruction on the 200MHz microprocessor is 5.0ns */
 
-//#define OVERCLOCK 150000
+/* With the debounce counter code in place, 190MHz is needed */
 #define OVERCLOCK 200000
 
 #include "roms.h"
@@ -186,14 +186,6 @@ void preconvert_rom( uint8_t *image_ptr, uint32_t length )
   }
 }
 
-
-/* From the timer_lowlevel.c example */
-uint64_t get_time_us( void )
-{
-  uint32_t lo = timer_hw->timelr;
-  uint32_t hi = timer_hw->timehr;
-  return ((uint64_t)hi << 32u) | lo;
-}
 
 /*
  * Populate the address bus indirection table.
@@ -362,6 +354,16 @@ int main()
        */
     }
 
+    /*
+     * The above section deals with a ROM read if their was one. It will have
+     * waited until the Z80 is finished (MREQ going inactive), then we drop to
+     * here. There's a small bit of time when other stuff can be done, but the
+     * Z80 is possibly already preparing the next ROM read, so whatever happens
+     * below this point needs to be quick.
+     * Note that the Pico example get_time_us() function, which I was using for
+     * the switch debounce, takes 1.5uS, which is too slow.
+     */
+
     /* If the user button is pressed, fire the NMI */
     if( gpios_state & PICO_USER_INPUT_BIT_MASK )
     {
@@ -370,7 +372,8 @@ int main()
 	/*
 	 * Debounce with a counter, the switch is a bit noisy. Wait for this
 	 * many iterations of the loop to complete with the button down before
-	 * deciding the button is really down
+	 * deciding the button is really down.
+	 * Value was empricially found.
 	 */
 	if( ++debounce_counter == 1000 )
 	{
@@ -392,7 +395,7 @@ int main()
       }
       else
       {
-	/* Button is not pressed. reset the counter */
+	/* Button is not pressed (or has bounced "off"), reset the counter */
 	debounce_counter = 0;
       }
     }
