@@ -315,8 +315,9 @@ int main()
    */
   add_alarm_in_ms( 5, start_z80_alarm_func, NULL, 0 );
 
-  uint8_t user_button_pressed = 0;
+  uint8_t  user_button_pressed = 0;
   uint32_t debounce_counter = 0;
+  uint8_t  nmi_asserted = 0;
   while(1)
   {
     register uint32_t gpios_state;
@@ -364,6 +365,20 @@ int main()
      * the switch debounce, takes 1.5uS, which is too slow.
      */
 
+    /*
+     * If NMI was asserted, turn it off. NMI causes the Z80 to jump to 0x0066
+     * which is in the ROM, so it's guaranteed that when NMI is asserted the
+     * Pico will come back round this loop next iteration. Turning NMI off here
+     * means it was asserted for one Z80 memory read instruction.
+     */
+    if( nmi_asserted )
+    {
+      gpio_put(NMI_GP, 1);
+      nmi_asserted = 0;
+
+      gpio_put(LED_PIN, 0);
+    }
+
     /* If the user button is pressed, fire the NMI */
     if( gpios_state & PICO_USER_INPUT_BIT_MASK )
     {
@@ -373,13 +388,16 @@ int main()
 	 * Debounce with a counter, the switch is a bit noisy. Wait for this
 	 * many iterations of the loop to complete with the button down before
 	 * deciding the button is really down.
-	 * Value was empricially found.
+	 * Value was empirically found.
 	 */
 	if( ++debounce_counter == 1000 )
 	{
 	  gpio_put(LED_PIN, 1);
 	
 	  user_button_pressed = 1;
+
+	  gpio_put(NMI_GP, 0);
+	  nmi_asserted = 1;
 	}
       }
     }
@@ -390,8 +408,6 @@ int main()
 	/* Was pressed, now isn't, it's been released */
 	user_button_pressed = 0;
 	debounce_counter = 0;
-
- 	gpio_put(LED_PIN, 0);
       }
       else
       {

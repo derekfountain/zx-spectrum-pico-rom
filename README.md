@@ -21,6 +21,11 @@ It works like this (click through for YouTube video):
 
 https://youtube.com/shorts/0Ot5mol2f5A?feature=share
 
+Update Dec'24: I used this Pico ROM project as the basis for a bit
+of experimentation with the Z80's non maskable interrupt (NMI) on 
+the Spectrum. Updated software and description are [here](https://github.com/derekfountain/zx-spectrum-pico-rom/tree/main/firmware_nmi).
+
+
 ## Design
 
 The Z80's address and data bus lines are connected to the Pico's
