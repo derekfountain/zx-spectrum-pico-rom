@@ -1,0 +1,41 @@
+.program lower_border_timer
+.wrap_target
+	wait 0 pin 0	                      ; wait for a toggle off of the input pin
+
+   	set pins, 0  [31]                     ; pull NMI low
+
+	wait 1 pin 0 [31]                     ; wait for INT to end
+
+   	set pins, 1                           ; pull NMI high again
+.wrap
+
+
+
+% c-sdk {
+
+/*
+ * Set up the Z80 INT to NMI response
+ * input_pin should be the INT GPIO, output_pin should be the NMI GPIO
+ */
+void lower_border_timer_program_init(PIO pio, uint sm, uint offset, uint input_pin, uint output_pin)
+{
+  /* Set input pin to be input (the pin which watches for the Z80's /INT) */
+  pio_gpio_init(pio, input_pin);
+  pio_sm_set_consecutive_pindirs(pio, sm, input_pin,  1, false);
+  gpio_pull_up(input_pin);
+
+  /* Set output pin to be output (the pin which fires the NMI) */
+  pio_gpio_init(pio, output_pin);
+  pio_sm_set_consecutive_pindirs(pio, sm, output_pin,  1, true);
+
+  /* Configure IN */
+  pio_sm_config c = lower_border_timer_program_get_default_config(offset);
+  sm_config_set_in_pins(&c, input_pin);
+
+  /* Configure SET */
+  sm_config_set_set_pins(&c, output_pin, 1);
+
+  /* Initialise the state machine */
+  pio_sm_init(pio, sm, offset, &c);
+}
+%}
