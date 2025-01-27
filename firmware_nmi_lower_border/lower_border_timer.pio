@@ -1,3 +1,57 @@
+; ZX Pico Lower Border Experimentation Firmware, a Raspberry Pi Pico
+; based ZX Spectrum research project
+; Copyright (C) 2025 Derek Fountain
+; 
+; This program is free software; you can redistribute it and/or
+; modify it under the terms of the GNU General Public License
+; as published by the Free Software Foundation; either version 2
+; of the License, or (at your option) any later version.
+; 
+; This program is distributed in the hope that it will be useful,
+; but WITHOUT ANY WARRANTY; without even the implied warranty of
+; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+; GNU General Public License for more details.
+; 
+; You should have received a copy of the GNU General Public License
+; along with this program; if not, write to the Free Software
+; Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+
+
+; This PIO program implements the timer and trigger for the NMI
+; signal which the RP2040 sends to the Z80 at the point the lower
+; border is about to start to be drawn. It's an exercise in PIO
+; timings, albeit a fairly simple one.
+;
+; The PIO clock is expected to be divided by 1,000, giving a clock
+; of 125KHz, which is a period of 8us.
+;
+; What follows is a huge pile of comments which describe my learning
+; how to count PIO clock cycles, etc. The program itself is pretty
+; trivial. It's this:
+;
+; .program lower_border_timer
+; .wrap_target
+;	 wait 0 pin 0 [31]
+;
+;        set x, 30 [31]
+; first_lines:                                           
+;	nop [31]
+;	jmp x--, first_lines [31]
+;
+;	set pins, 0 [3]
+;	set pins, 1 [3]
+; .wrap
+;
+; It waits on pin 0, which is the Z80's /INT signal, then enters a loop
+; of NOPs which is timed to wait for the ULA to draw the Spectrum's
+; top border and screen pixel/colour data. Then it pulls the NMI pin
+; low for a moment to trigger the Z80's non maskable interrupt.
+;
+; All the timings are described in my notes below, inline with the actual
+; program.
+
+
+
 ; https://worldofspectrum.org/faq/reference/48kreference.htm
 ;
 ; INT goes low, then there are 64 lines of top border, followed

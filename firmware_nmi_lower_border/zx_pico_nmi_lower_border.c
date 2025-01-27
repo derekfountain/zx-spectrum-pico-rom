@@ -1,7 +1,7 @@
 /*
  * ZX Pico Lower Border Experimentation Firmware, a Raspberry Pi Pico
  * based ZX Spectrum research project
- * Copyright (C) 2024 Derek Fountain
+ * Copyright (C) 2025 Derek Fountain
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -58,7 +58,7 @@ int main()
   timer_offset    = pio_add_program(timer_pio, &lower_border_timer_program);
   lower_border_timer_program_init(timer_pio, timer_sm, timer_offset, INT_GP, NMI_GP);
 
-  /* Set the clock divider to get a more manageable frequency (must be done ater initialisation) */
+  /* Set the clock divider to get a more manageable frequency (must be done after initialisation) */
   pio_sm_set_clkdiv(timer_pio, timer_sm, 1000.0);
 
   /* Set it running */
