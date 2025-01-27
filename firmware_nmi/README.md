@@ -77,5 +77,4 @@ there's a quick flicker of magenta in the border.
 I was quite pleased with getting that to work, but I can't really think what
 to do with it.
 
-Derek Fountain
-December 2024
+[Derek Fountain](https://www.derekfountain.org/zxspectrum.php), December 2024

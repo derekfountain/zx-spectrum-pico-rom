@@ -4,5 +4,4 @@
 
 TBC
 
-Derek Fountain
-December 2024
+[Derek Fountain](https://www.derekfountain.org/zxspectrum.php), January 2025

@@ -19,7 +19,7 @@
  */
 
 /*
- * cmake -DCMAKE_BUILD_TYPE=Debug
+ * cmake -DCMAKE_BUILD_TYPE=Debug ..
  * make -j10
  * sudo openocd -f interface/picoprobe.cfg -f target/rp2040.cfg -c "program ./zx_pico_nmi_lower_border.elf verify reset exit"
  */
@@ -53,10 +53,15 @@ int main()
   gpio_set_function(INT_GP, GPIO_FUNC_PIO1);    
   gpio_set_function(NMI_GP, GPIO_FUNC_PIO1);    
 
+  /* Set up the PIO state machine */
   timer_sm        = pio_claim_unused_sm(timer_pio, true);
   timer_offset    = pio_add_program(timer_pio, &lower_border_timer_program);
   lower_border_timer_program_init(timer_pio, timer_sm, timer_offset, INT_GP, NMI_GP);
 
+  /* Set the clock divider to get a more manageable frequency (must be done ater initialisation) */
+  pio_sm_set_clkdiv(timer_pio, timer_sm, 1000.0);
+
+  /* Set it running */
   pio_sm_set_enabled(timer_pio, timer_sm, true);
 
   /* Blip LED to show we're running */

@@ -1,14 +1,146 @@
+; https://worldofspectrum.org/faq/reference/48kreference.htm
+;
+; INT goes low, then there are 64 lines of top border, followed
+; by 192 lines of display. At that point, exactly as the lower border
+; starts being drawn, the NMI should fire. There are 56 more lines
+; of lower border to complete the frame - 312 lines in all.
+;
+; 224 T-states per line, means 69,888 Ts per frame.
+;
+; 224 Ts at 3.5MHz is 6.4e-05 seconds per line.
+;
+; A signal with a period of 6.4e-05 seconds is 15.625KHz.
+;
+; RP2040 is clocked at 125MHz. 8e-09 secs per cycle.
+;
+; 125,000,000 / 15,625 is 8,000.
+
+
+; This bit waggler sends the GPIO up for 125,000,000th of a second
+; and down for 125,000,000th of a second. Thus one full cycle
+; takes 62,500,000th of a second. That's too fast for my oscilloscope
+; to measure correctly.
+;
+; .wrap_target
+;       set pins, 0
+;	set pins, 1
+; .wrap
+
+
+; This one slows each instruction down such that each one takes
+; 62,500,000th of a second, and one full cycle therefore takes
+; 31,250,000th of a second. The 'scope reports this as 31.2502MHz.
+; This is a useful test signal to ensure things are set up right.
+;
+; .wrap_target
+;       set pins, 0 [1]
+;	set pins, 1 [1]
+; .wrap
+
+
+; Removing the delays, but using the clock divider from the C code:
+;
+;  pio_sm_set_clkdiv(timer_pio, timer_sm, 2.0);
+;
+; results in the same signal - 31.2502MHz.
+
+
+; With no delays and a 8000 divider from the C code:
+;
+;  pio_sm_set_clkdiv(timer_pio, timer_sm, 8000.0);
+;
+; I get a signal of 7.81252KHz which has a period of 0.000127999672321
+; seconds. (i.e. 128us). Two instructions are needed to generate
+; that signal (one up, one down) so each instruction, with an 8000
+; clock divider, takes 64us. There are 312 lines on the Spectrum
+; display, and 312 64us takes 0.019968 seconds, or just about 0.02
+; seconds. That's 20ms, and 50 of those is 1 second. So that seems to
+; add up.
+;
+; That means one PIO instruction executes each Spectrum display line.
+;
+; So, with a clock divider of 8,000, one PIO instruction takes one
+; Spectrum screen line. The /INT pulse is low for 10us, which means
+; by the time the initial wait for /INT is complete (64us) the /INT
+; pulse is complete and /INT is high again. So no need to wait for it
+; to go high again.
+;
+; Unfortunately, that doesn't work. With the clock runing that slowly
+; (64us per instruction) the 10us /INT signal is frequently missed.
+; I'm guessing the RP2040 takes one instruction period to look at the
+; incoming GPIO? Not sure, but if I speed the clock up to divided by
+; 1,000 (an instruction period of 6.4us) it works.
+
+; OK, so I'll use a clock divider of 1,000 instead of 8,000. Everything
+; increases 8-fold. The simple GPIO bit waggler gives a frequency of
+; 62.502KHz, which is a period of 16us. That's 8us per PIO instruction,
+; so 8us to bring the signal down, and 8us for it to go up again.
+; One Spectrum display line is 6.4e-05, so that's 8 PIO cycles per screen
+; line (8us multiplied by 8 is 64us). 8 of those brings me back to
+; 0.000128 seconds (i.e. 128us). So I now need 8 PIO cycles for the time
+; taken to drawn one Spectrum display line.
+
+; I want to count off 64+192=256 lines after /INT to get to the point
+; when I want to fire NMI. That's 2,048 PIO cycles.
+
 .program lower_border_timer
 .wrap_target
-	wait 0 pin 0	                      ; wait for a toggle off of the input pin
+	wait 0 pin 0 [31]	                      ; wait for /INT to go low
+						      ; 32*8us is 256us (0.000256 seconds)
+						      ; 256us / 6.4e-05 is 4 lines to completed
 
-   	set pins, 0  [31]                     ; pull NMI low
+        set x, 30 [31]                                ; set up loop counter
+						      ; another 32 cycles added by the [31] is another 256us
+						      ; that's 512us in total, which is 
+						      ; 8 spectrum lines now completed, 248 to go
 
-	wait 1 pin 0 [31]                     ; wait for INT to end
+; If I set the loop counter to 0, but with the jmp in place, there's no loop taken:
+;   without the nop it's at 524us, which is the 512us above plus 8 for the jmp, plus the 4 for the half set below
+;   with the nop it's 532us, which is the 512us above, plus 8 for the nop, plus 8 for the jmp, plus the 4 for the half set below
 
-   	set pins, 1                           ; pull NMI high again
+; If I set the loop counter to 1, the loop is taken once:
+;   timer goes to 548, so 16us added. 8 will be the nop running again, 8 more for another jmp
+
+; If I set the loop counter to 2, the loop is taken twice:
+;   another 16us added and the timer goes to 564
+
+; So the loop adds x*16 microseconds to elapsed time. x=31 adds 496us.
+; With 0 iterations it was at 532us, add 496 for 31 loops, that's 1028us.
+; Scope reading agrees.
+
+; Checking the [31] delay on the nop: I put the x back to 0, so no
+; iterations. nop[31] should be 32 cycles, which is 8us times 32 is 256us.
+; With no nop, but including the jmp and half set it's currently 532us.
+; Add 256us for the nop[31] gives 778us. Scope agrees.
+;
+; Add [31] to the jmp. The 778us above includes one jmp (a drop through).
+; Adding the [31] to the jmp adds 31 more cycles. That's another 248us
+; giving 778+248=1026us. Scope agrees.
+;
+; So one iteration of the loop adds 256us for the delayed nop, and another
+; 256us for the delayed jmp, 512us in total.
+;
+; Adding 1 iteration by setting x=1 should be 1026us+512us=1,538us. Scope agrees.
+; Adding 1 iteration by setting x=2 should be 1538us+512us=2,050us. Scope agrees.
+; So it goes up 512us for each increment of x.
+; I want 16,384ms. 16384-1538=14846. 14846/512=28.996.
+; Add 29 iterations: 512*29+1538=16,386us.
+; Or maybe less confusingly, 512*30+1026=16,386us
+;
+; It's 16,386 instead of 16,384 because of the half-cycle which happens on the set, below.
+
+first_lines:                                           
+	nop [31]                     ; 256 cycles      ; 4 more lines completed
+	jmp x--, first_lines [31]    ; 256 cycles      ; 4 more lines, the delay is always made
+
+; So now I've done 8 Spectrum lines in the top wait and loop setup, plus another
+; 248 lines in the loop - that's 256 Spectrum lines. Bottom border is about
+; to start, fire the NMI.
+
+	set pins, 0 [3]                               ; the NMI bit waggle cycle is 1 spectrum line
+	set pins, 1 [3]
 .wrap
-
+	
 
 
 % c-sdk {
