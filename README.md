@@ -78,6 +78,24 @@ The Z80's /M1 line is connected to a Pico GPIO input. This isn't required
 for the typical use case, but it makes the device a useful test bed for
 running the ZX Interface One ROM - see below.
 
+### Caveat
+
+Feb'25: I was playing around with one of these interfaces, and found myself
+wanting to re-enable the Spectrum's ROM with the interface still plugged in.
+(I needed the Pico for something, but with the Spectrum's own ROM.) So I
+cut the /ROMCS track on the back of the interface, and then spent some time
+trying to figure out why the Spectrum wasn't working.
+
+Eventually it dawned on me: when I cut the track the Spectrum's ROM IC
+was re-enabled, and it started to drive the data bus. But the U4 level
+shifter was still working on the interface, which meant that was also driving
+the data bus. That's a bad thing, the two ICs were both trying to be outputs
+and were driving each other's data lines. The Z80 was getting garbage on the
+data bus, and I think I was rather lucky nothing got damaged. I removed the
+level shifter to complete my experimentation.
+
+So, um, don't do that. :)
+
 ### Construction
 
 The gerbers archive for upload, for example, JLCPCB, is
