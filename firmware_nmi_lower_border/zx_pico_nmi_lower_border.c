@@ -35,6 +35,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include "pico/stdlib.h"
+#include "pico/multicore.h"
 #include "hardware/gpio.h"
 #include "pico/binary_info.h"
 #include "hardware/timer.h"
@@ -46,7 +47,7 @@
 /* 1 instruction on the 150MHz microprocessor is 6.6ns */
 /* 1 instruction on the 200MHz microprocessor is 5.0ns */
 
-#define OVERCLOCK 150000
+#define OVERCLOCK 200000
 
 #include "roms.h"
 
@@ -223,12 +224,11 @@ void create_indirection_table( void )
 /* Just the one ROM image for this version */
 const uint8_t *rom_image_ptr = __ROMs_48_original_rom;
 
-
+#if 0
 /*
- * This is called by an alarm function. It lets the Z80 run by pulling the
- * Pico's controlling GPIO low
+ * This is called by an alarm function.
  */
-int64_t start_nmi_pulsing_func( alarm_id_t id, void *user_data )
+int64_t start_nmi_pulsing_func_pio( alarm_id_t id, void *user_data )
 {
   int timer_sm;
   PIO timer_pio = pio1;
@@ -252,17 +252,57 @@ int64_t start_nmi_pulsing_func( alarm_id_t id, void *user_data )
 
   return 0;
 }
+#endif
 
+static uint8_t nmi_due = 0;
+int64_t start_nmi_pulsing_func( alarm_id_t id, void *user_data )
+{
+//  nmi_due = 1;
 
+  return 3000000;
+}
 
+/*
+ * This is called by an alarm function. It lets the Z80 run by pulling the
+ * Pico's controlling GPIO low
+ */
 int64_t start_z80_alarm_func( alarm_id_t id, void *user_data )
 {
+  /* Everything is running, start the NMI pulsing */
 //  add_alarm_in_ms( 3000, start_nmi_pulsing_func, NULL, 0 );
 
   gpio_put( PICO_RESET_Z80_GP, 0 );
+
   return 0;
 }
 
+void core1_main( void )
+{
+  /*
+   * Ready to go, give it a few milliseconds for this Pico code to get into
+   * its main loop, then let the Z80 start
+   */
+  add_alarm_in_ms( 5, start_z80_alarm_func, NULL, 0 );
+
+  /* Start with NMI high (inactive) */
+  gpio_init( NMI_GP );  gpio_set_dir( NMI_GP, GPIO_OUT );
+  gpio_put( NMI_GP, 1 );
+
+  while(1)
+  {
+    gpio_put( NMI_GP, 1 );
+    busy_wait_us_32(3000000);
+
+    gpio_put(LED_PIN, 1);
+
+    gpio_put( NMI_GP, 0 );
+    busy_wait_us_32(10000);
+    gpio_put( NMI_GP, 1 );
+
+    gpio_put(LED_PIN, 0);  
+  }
+
+}
 
 int main()
 {
@@ -319,10 +359,6 @@ int main()
   gpio_init( ROM_ACCESS_GP ); gpio_set_dir( ROM_ACCESS_GP, GPIO_IN );
   gpio_pull_down( ROM_ACCESS_GP );
 
-  /* Start with NMI high (inactive) */
-  gpio_init( NMI_GP );  gpio_set_dir( NMI_GP, GPIO_OUT );
-  gpio_put( NMI_GP, 1 );
-
   /* Blip LED to show we're running */
   gpio_init(LED_PIN);  gpio_set_dir(LED_PIN, GPIO_OUT);
 
@@ -336,11 +372,8 @@ int main()
   }
   gpio_put(LED_PIN, 0);
 
-  /*
-   * Ready to go, give it a few milliseconds for this Pico code to get into
-   * its main loop, then let the Z80 start
-   */
-  add_alarm_in_ms( 5, start_z80_alarm_func, NULL, 0 );
+  /* Stuff other than the ROM emulation happens on the other core */
+  multicore_launch_core1( core1_main ); 
 
   while(1)
   {
@@ -373,6 +406,19 @@ int main()
      * which means the value will disappear from the Z80's view when the Z80's
      * read is complete. At which point the GPIO's state doesn't matter.
      */
+
+#if 0
+    if( nmi_due )
+    {
+      nmi_due = 0;
+
+      /* NMI is edge triggered, this pauses long enough for the signal to show on the scope */
+      gpio_put( NMI_GP, 0 );
+      __asm volatile ("nop");
+      __asm volatile ("nop");
+      gpio_put( NMI_GP, 1 );
+    }
+#endif
 
   } /* Infinite loop */
 
