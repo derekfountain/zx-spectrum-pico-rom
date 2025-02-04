@@ -30,6 +30,7 @@
 ; trivial. It's this:
 ;
 ; .program lower_border_timer
+;	set pins, 1
 ; .wrap_target
 ;	 wait 0 pin 0 [31]
 ;
@@ -38,8 +39,8 @@
 ;	nop [31]
 ;	jmp x--, first_lines [31]
 ;
-;	set pins, 0 [3]
-;	set pins, 1 [3]
+;	set pins, 0
+;	set pins, 1
 ; .wrap
 ;
 ; It waits on pin 0, which is the Z80's /INT signal, then enters a loop
@@ -138,6 +139,8 @@
 ; when I want to fire NMI. That's 2,048 PIO cycles.
 
 .program lower_border_timer
+	set pins, 1				      ; turn off NMI to start
+
 .wrap_target
 	wait 0 pin 0 [31]	                      ; wait for /INT to go low
 						      ; 32*8us is 256us (0.000256 seconds)
@@ -191,8 +194,8 @@ first_lines:
 ; 248 lines in the loop - that's 256 Spectrum lines. Bottom border is about
 ; to start, fire the NMI.
 
-	set pins, 0 [3]                               ; the NMI bit waggle cycle is 1 spectrum line
-	set pins, 1 [3]
+	set pins, 0 [0]                               ; the NMI bit waggle cycle is 1 PIO clock
+	set pins, 1 [0]
 .wrap
 	
 

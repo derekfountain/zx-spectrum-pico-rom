@@ -46,7 +46,7 @@
 /* 1 instruction on the 150MHz microprocessor is 6.6ns */
 /* 1 instruction on the 200MHz microprocessor is 5.0ns */
 
-#define OVERCLOCK 200000
+#define OVERCLOCK 150000
 
 #include "roms.h"
 
@@ -132,11 +132,10 @@ const uint32_t ROM_ACCESS_BIT_MASK      = ((uint32_t)1 << ROM_ACCESS_GP);
 const uint8_t  PICO_RESET_Z80_GP        = 28;
 
 /* NMI output to Spectrum */
-const uint8_t NMI_GP                    = 27;
+const uint8_t  NMI_GP                   = 27;
 
-/* INT input from the Spectrum */
+/* INT input from the Spectrum, comes in via the level shifter */
 const uint8_t  INT_GP                   = 15;
-const uint8_t  TEST_OUTPUT_GP = 15;
 
 const uint32_t DBUS_MASK     = ((uint32_t)1 << D0_GP) |
                                ((uint32_t)1 << D1_GP) |
@@ -229,8 +228,37 @@ const uint8_t *rom_image_ptr = __ROMs_48_original_rom;
  * This is called by an alarm function. It lets the Z80 run by pulling the
  * Pico's controlling GPIO low
  */
+int64_t start_nmi_pulsing_func( alarm_id_t id, void *user_data )
+{
+  int timer_sm;
+  PIO timer_pio = pio1;
+  uint timer_offset;
+
+  gpio_set_function(INT_GP, GPIO_FUNC_PIO1);    
+  gpio_set_function(NMI_GP, GPIO_FUNC_PIO1);    
+
+  /* Set up the PIO state machine */
+  timer_sm        = pio_claim_unused_sm(timer_pio, true);
+  timer_offset    = pio_add_program(timer_pio, &lower_border_timer_program);
+  lower_border_timer_program_init(timer_pio, timer_sm, timer_offset, INT_GP, NMI_GP);
+
+  /* Set the clock divider to get a more manageable frequency (must be done after initialisation) */
+  pio_sm_set_clkdiv(timer_pio, timer_sm, 1000.0);
+
+  /* Set it running */
+  pio_sm_set_enabled(timer_pio, timer_sm, true);
+
+  gpio_put(LED_PIN, 1);
+
+  return 0;
+}
+
+
+
 int64_t start_z80_alarm_func( alarm_id_t id, void *user_data )
 {
+//  add_alarm_in_ms( 3000, start_nmi_pulsing_func, NULL, 0 );
+
   gpio_put( PICO_RESET_Z80_GP, 0 );
   return 0;
 }
@@ -291,33 +319,13 @@ int main()
   gpio_init( ROM_ACCESS_GP ); gpio_set_dir( ROM_ACCESS_GP, GPIO_IN );
   gpio_pull_down( ROM_ACCESS_GP );
 
-  int timer_sm;
-  PIO timer_pio = pio1;
-  uint timer_offset;
-
-//  gpio_set_function(INT_GP, GPIO_FUNC_PIO1);    
-//  gpio_set_function(NMI_GP, GPIO_FUNC_PIO1);    
-
-  /* Set up the PIO state machine */
-//  timer_sm        = pio_claim_unused_sm(timer_pio, true);
-//  timer_offset    = pio_add_program(timer_pio, &lower_border_timer_program);
-//  lower_border_timer_program_init(timer_pio, timer_sm, timer_offset, INT_GP, NMI_GP);
-
-  /* Set the clock divider to get a more manageable frequency (must be done after initialisation) */
-//  pio_sm_set_clkdiv(timer_pio, timer_sm, 1000.0);
-
-  /* Set it running */
-//  pio_sm_set_enabled(timer_pio, timer_sm, true);
-/* Set NMI output inactive */
-gpio_init( TEST_OUTPUT_GP ); gpio_set_dir( TEST_OUTPUT_GP, GPIO_OUT );
-gpio_put( TEST_OUTPUT_GP, 0 );
-
-//gpio_init( NMI_GP ); gpio_set_dir( NMI_GP, GPIO_OUT );
-//gpio_put( NMI_GP, 1 );
+  /* Start with NMI high (inactive) */
+  gpio_init( NMI_GP );  gpio_set_dir( NMI_GP, GPIO_OUT );
+  gpio_put( NMI_GP, 1 );
 
   /* Blip LED to show we're running */
-  gpio_init(LED_PIN);
-  gpio_set_dir(LED_PIN, GPIO_OUT);
+  gpio_init(LED_PIN);  gpio_set_dir(LED_PIN, GPIO_OUT);
+
   int signal;
   for( signal=0; signal<2; signal++ )
   {
@@ -333,8 +341,6 @@ gpio_put( TEST_OUTPUT_GP, 0 );
    * its main loop, then let the Z80 start
    */
   add_alarm_in_ms( 5, start_z80_alarm_func, NULL, 0 );
-gpio_put( TEST_OUTPUT_GP, 1 ); busy_wait_us_32(1000);
-gpio_put( TEST_OUTPUT_GP, 0 ); busy_wait_us_32(1000);
 
   while(1)
   {
@@ -347,28 +353,26 @@ gpio_put( TEST_OUTPUT_GP, 0 ); busy_wait_us_32(1000);
      */
     while( (gpios_state=gpio_get_all()) & ROM_ACCESS_BIT_MASK );
 
-    gpio_put( TEST_OUTPUT_GP, 1 ); //busy_wait_us_32(1000);
-      register uint16_t raw_bit_pattern = pack_address_gpios( gpios_state );
+    register uint16_t raw_bit_pattern = pack_address_gpios( gpios_state );
 
-      register uint16_t rom_address = address_indirection_table[raw_bit_pattern];
+    register uint16_t rom_address = address_indirection_table[raw_bit_pattern];
 
-      register uint8_t rom_value = *(rom_image_ptr+rom_address);
+    register uint8_t rom_value = *(rom_image_ptr+rom_address);
 
-      /* The level shifter is enabled via hardware, so just set the GPIOs */
-      gpio_put_masked( DBUS_MASK, rom_value );
+    /* The level shifter is enabled via hardware, so just set the GPIOs */
+    gpio_put_masked( DBUS_MASK, rom_value );
 
-      /*
-       * Spin until the Z80 releases MREQ indicating the read is complete.
-       * ROM_ACCESS is active low - if it's 0 then the ROM is still being accessed.
-       */
-      while( (gpio_get_all() & ROM_ACCESS_BIT_MASK) == 0 );
-    gpio_put( TEST_OUTPUT_GP, 0 ); // busy_wait_us_32(1000);
+    /*
+     * Spin until the Z80 releases MREQ indicating the read is complete.
+     * ROM_ACCESS is active low - if it's 0 then the ROM is still being accessed.
+     */
+    while( (gpio_get_all() & ROM_ACCESS_BIT_MASK) == 0 );
 
-      /*
-       * Just leave the value there. The level shifter gets turned off by hardware
-       * which means the value will disappear from the Z80's view when the Z80's
-       * read is complete. At which point the GPIO's state doesn't matter.
-       */
+    /*
+     * Just leave the value there. The level shifter gets turned off by hardware
+     * which means the value will disappear from the Z80's view when the Z80's
+     * read is complete. At which point the GPIO's state doesn't matter.
+     */
 
   } /* Infinite loop */
 
