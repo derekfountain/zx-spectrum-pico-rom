@@ -290,16 +290,17 @@ void core1_main( void )
 
   while(1)
   {
+    /*
+     * In theory this is 20ms, but not synced to /INT. In practice
+     * the gpio_put()s and other bits slow it down and the timing
+     * isn't quite right. So the PIO solution is still needed.
+     */
     gpio_put( NMI_GP, 1 );
-    busy_wait_us_32(3000000);
-
-    gpio_put(LED_PIN, 1);
+    busy_wait_us_32(20000-10);
 
     gpio_put( NMI_GP, 0 );
-    busy_wait_us_32(10000);
+    busy_wait_us_32(10);
     gpio_put( NMI_GP, 1 );
-
-    gpio_put(LED_PIN, 0);  
   }
 
 }
