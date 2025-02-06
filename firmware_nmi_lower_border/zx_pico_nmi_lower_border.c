@@ -254,12 +254,18 @@ int64_t start_nmi_pulsing_func_pio( alarm_id_t id, void *user_data )
 }
 #endif
 
-static uint8_t nmi_due = 0;
 int64_t start_nmi_pulsing_func( alarm_id_t id, void *user_data )
 {
-//  nmi_due = 1;
+  gpio_put( NMI_GP, 0 );
+  busy_wait_us_32(10);     /* Shows on scope, could be faster */
+  gpio_put( NMI_GP, 1 );
 
-  return 3000000;
+  /*
+   * In theory this is 20ms, but not synced to /INT. In practice
+   * the gpio_put()s and other bits slow it down and the timing
+   * isn't quite right. So the PIO solution is still needed.
+   */
+  return 20000;
 }
 
 /*
@@ -268,41 +274,35 @@ int64_t start_nmi_pulsing_func( alarm_id_t id, void *user_data )
  */
 int64_t start_z80_alarm_func( alarm_id_t id, void *user_data )
 {
-  /* Everything is running, start the NMI pulsing */
-//  add_alarm_in_ms( 3000, start_nmi_pulsing_func, NULL, 0 );
-
   gpio_put( PICO_RESET_Z80_GP, 0 );
 
   return 0;
 }
 
+/*
+ * ROM emulation runs on the other core. It's time critical, so
+ * this core handles everything else
+ */
 void core1_main( void )
 {
+  /* All interrupts off on this core except the timers */
+  irq_set_mask_enabled( 0xFFFFFFFF, 0 );
+  irq_set_mask_enabled( 0x0000000F, 1 );
+
   /*
-   * Ready to go, give it a few milliseconds for this Pico code to get into
+   * Ready to go, give it a millisecond for this Pico code to get into
    * its main loop, then let the Z80 start
    */
-  add_alarm_in_ms( 5, start_z80_alarm_func, NULL, 0 );
+  add_alarm_in_ms( 1, start_z80_alarm_func, NULL, 0 );
 
   /* Start with NMI high (inactive) */
   gpio_init( NMI_GP );  gpio_set_dir( NMI_GP, GPIO_OUT );
   gpio_put( NMI_GP, 1 );
 
-  while(1)
-  {
-    /*
-     * In theory this is 20ms, but not synced to /INT. In practice
-     * the gpio_put()s and other bits slow it down and the timing
-     * isn't quite right. So the PIO solution is still needed.
-     */
-    gpio_put( NMI_GP, 1 );
-    busy_wait_us_32(20000-10);
+  /* When everything is running, start the NMI pulsing */
+  add_alarm_in_ms( 1, start_nmi_pulsing_func, NULL, 0 );
 
-    gpio_put( NMI_GP, 0 );
-    busy_wait_us_32(10);
-    gpio_put( NMI_GP, 1 );
-  }
-
+  while(1);
 }
 
 int main()
@@ -320,10 +320,6 @@ int main()
    */
   gpio_init( PICO_RESET_Z80_GP );  gpio_set_dir( PICO_RESET_Z80_GP, GPIO_OUT );
   gpio_put( PICO_RESET_Z80_GP, 1 );
-
-  /* All interrupts off except the timers */
-  irq_set_mask_enabled( 0xFFFFFFFF, 0 );
-  irq_set_mask_enabled( 0x0000000F, 1 );
 
   /* Create address indirection table, this is the address bus optimisation  */
   create_indirection_table();
@@ -363,6 +359,8 @@ int main()
   /* Blip LED to show we're running */
   gpio_init(LED_PIN);  gpio_set_dir(LED_PIN, GPIO_OUT);
 
+#define FLASH_LED_WHEN_RUNNING 0
+#if FLASH_LED_WHEN_RUNNING
   int signal;
   for( signal=0; signal<2; signal++ )
   {
@@ -371,10 +369,15 @@ int main()
     gpio_put(LED_PIN, 0);
     busy_wait_us_32(250000);
   }
+#endif
+
   gpio_put(LED_PIN, 0);
 
   /* Stuff other than the ROM emulation happens on the other core */
   multicore_launch_core1( core1_main ); 
+
+  /* All interrupts off, the ROM emulation on this core needs to run uninterrupted */
+  irq_set_mask_enabled( 0xFFFFFFFF, 0 );
 
   while(1)
   {
@@ -386,6 +389,7 @@ int main()
      * Also break out when the user button is pressed.
      */
     while( (gpios_state=gpio_get_all()) & ROM_ACCESS_BIT_MASK );
+gpio_put(LED_PIN, 1);
 
     register uint16_t raw_bit_pattern = pack_address_gpios( gpios_state );
 
@@ -400,7 +404,9 @@ int main()
      * Spin until the Z80 releases MREQ indicating the read is complete.
      * ROM_ACCESS is active low - if it's 0 then the ROM is still being accessed.
      */
+gpio_put(LED_PIN, 0);
     while( (gpio_get_all() & ROM_ACCESS_BIT_MASK) == 0 );
+
 
     /*
      * Just leave the value there. The level shifter gets turned off by hardware
