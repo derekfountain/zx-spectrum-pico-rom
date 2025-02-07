@@ -47,7 +47,16 @@
 /* 1 instruction on the 150MHz microprocessor is 6.6ns */
 /* 1 instruction on the 200MHz microprocessor is 5.0ns */
 
-#define OVERCLOCK 200000
+#if 1
+/*
+ * The ROM emulation needs a slight overclock because it has to unjumble
+ * the data bus GPIOs lines. A design mistake I won't make again.
+ * My PIO calculations assume the Pico's native 125MHz clock, which
+ * I divide by 1,000, so this keeps it precise.
+ */
+#define OVERCLOCK_KHZ 150000
+#define PIO_DIVIDER ((OVERCLOCK_KHZ/125000.0)*1000.0)
+#endif
 
 #include "roms.h"
 
@@ -224,7 +233,8 @@ void create_indirection_table( void )
 /* Just the one ROM image for this version */
 const uint8_t *rom_image_ptr = __ROMs_48_original_rom;
 
-#if 0
+#define USE_PIO 1
+#if USE_PIO
 /*
  * This is called by an alarm function.
  */
@@ -243,17 +253,19 @@ int64_t start_nmi_pulsing_func_pio( alarm_id_t id, void *user_data )
   lower_border_timer_program_init(timer_pio, timer_sm, timer_offset, INT_GP, NMI_GP);
 
   /* Set the clock divider to get a more manageable frequency (must be done after initialisation) */
-  pio_sm_set_clkdiv(timer_pio, timer_sm, 1000.0);
+  pio_sm_set_clkdiv(timer_pio, timer_sm, PIO_DIVIDER);
 
   /* Set it running */
   pio_sm_set_enabled(timer_pio, timer_sm, true);
 
   gpio_put(LED_PIN, 1);
 
+  /* Timers have done their job, all interrupts off now */
+  irq_set_mask_enabled( 0xFFFFFFFF, 0 );
+
   return 0;
 }
-#endif
-
+#else
 int64_t start_nmi_pulsing_func( alarm_id_t id, void *user_data )
 {
   gpio_put( NMI_GP, 0 );
@@ -265,8 +277,9 @@ int64_t start_nmi_pulsing_func( alarm_id_t id, void *user_data )
    * the gpio_put()s and other bits slow it down and the timing
    * isn't quite right. So the PIO solution is still needed.
    */
-  return 20000;
+  return 2000000;
 }
+#endif
 
 /*
  * This is called by an alarm function. It lets the Z80 run by pulling the
@@ -300,17 +313,18 @@ void core1_main( void )
   gpio_put( NMI_GP, 1 );
 
   /* When everything is running, start the NMI pulsing */
-  add_alarm_in_ms( 1, start_nmi_pulsing_func, NULL, 0 );
+  add_alarm_in_ms( 2, start_nmi_pulsing_func_pio, NULL, 0 );
 
-  while(1);
+  while(1)
+    sleep_ms(1);
 }
 
 int main()
 {
   bi_decl(bi_program_description("ZX Spectrum Pico NMI lower border binary."));
 
-#ifdef OVERCLOCK
-  set_sys_clock_khz( OVERCLOCK, 1 );
+#ifdef OVERCLOCK_KHZ
+  set_sys_clock_khz( OVERCLOCK_KHZ, 1 );
 #endif
 
   /*
@@ -389,7 +403,6 @@ int main()
      * Also break out when the user button is pressed.
      */
     while( (gpios_state=gpio_get_all()) & ROM_ACCESS_BIT_MASK );
-gpio_put(LED_PIN, 1);
 
     register uint16_t raw_bit_pattern = pack_address_gpios( gpios_state );
 
@@ -404,7 +417,6 @@ gpio_put(LED_PIN, 1);
      * Spin until the Z80 releases MREQ indicating the read is complete.
      * ROM_ACCESS is active low - if it's 0 then the ROM is still being accessed.
      */
-gpio_put(LED_PIN, 0);
     while( (gpio_get_all() & ROM_ACCESS_BIT_MASK) == 0 );
 
 
@@ -413,19 +425,6 @@ gpio_put(LED_PIN, 0);
      * which means the value will disappear from the Z80's view when the Z80's
      * read is complete. At which point the GPIO's state doesn't matter.
      */
-
-#if 0
-    if( nmi_due )
-    {
-      nmi_due = 0;
-
-      /* NMI is edge triggered, this pauses long enough for the signal to show on the scope */
-      gpio_put( NMI_GP, 0 );
-      __asm volatile ("nop");
-      __asm volatile ("nop");
-      gpio_put( NMI_GP, 1 );
-    }
-#endif
 
   } /* Infinite loop */
 

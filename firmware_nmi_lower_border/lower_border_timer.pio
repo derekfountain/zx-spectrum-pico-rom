@@ -30,17 +30,17 @@
 ; trivial. It's this:
 ;
 ; .program lower_border_timer
-;	set pins, 1
+;	 set pins, 1
 ; .wrap_target
 ;	 wait 0 pin 0 [31]
 ;
-;        set x, 30 [31]
+;  set x, 30 [31]
 ; first_lines:                                           
-;	nop [31]
-;	jmp x--, first_lines [31]
+;	 nop [31]
+;	 jmp x--, first_lines [31]
 ;
-;	set pins, 0
-;	set pins, 1
+;	 set pins, 0
+;	 set pins, 1
 ; .wrap
 ;
 ; It waits on pin 0, which is the Z80's /INT signal, then enters a loop
@@ -139,17 +139,17 @@
 ; when I want to fire NMI. That's 2,048 PIO cycles.
 
 .program lower_border_timer
-	set pins, 1				      ; turn off NMI to start
+  set pins, 1				      ; turn off NMI to start
 
 .wrap_target
-	wait 0 pin 0 [31]	                      ; wait for /INT to go low
-						      ; 32*8us is 256us (0.000256 seconds)
-						      ; 256us / 6.4e-05 is 4 lines to completed
+  wait 0 pin 0 [31]	                      ; wait for /INT to go low
+                                          ; 32*8us is 256us (0.000256 seconds)
+                                          ; 256us / 6.4e-05 is 4 lines to completed
 
-        set x, 30 [31]                                ; set up loop counter
-						      ; another 32 cycles added by the [31] is another 256us
-						      ; that's 512us in total, which is 
-						      ; 8 spectrum lines now completed, 248 to go
+  set x, 30 [31]                          ; set up loop counter
+                                          ; another 32 cycles added by the [31] is another 256us
+                                          ; that's 512us in total, which is 
+                                          ; 8 spectrum lines now completed, 248 to go
 
 ; If I set the loop counter to 0, but with the jmp in place, there's no loop taken:
 ;   without the nop it's at 524us, which is the 512us above plus 8 for the jmp, plus the 4 for the half set below
@@ -187,17 +187,17 @@
 ; It's 16,386 instead of 16,384 because of the half-cycle which happens on the set, below.
 
 first_lines:                                           
-	nop [31]                     ; 256 cycles      ; 4 more lines completed
-	jmp x--, first_lines [31]    ; 256 cycles      ; 4 more lines, the delay is always made
+  nop [31]                     ; 256 cycles      ; 4 more lines completed
+  jmp x--, first_lines [31]    ; 256 cycles      ; 4 more lines, the delay is always made
 
 ; So now I've done 8 Spectrum lines in the top wait and loop setup, plus another
 ; 248 lines in the loop - that's 256 Spectrum lines. Bottom border is about
 ; to start, fire the NMI.
 
-	set pins, 0 [0]                               ; the NMI bit waggle cycle is 1 PIO clock
-	set pins, 1 [0]
+  set pins, 0 [0]                                ; the NMI bit waggle cycle is 1 PIO clock
+  set pins, 1 [0]
 .wrap
-	
+  
 
 
 % c-sdk {
