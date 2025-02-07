@@ -27,6 +27,8 @@ the Spectrum. Updated software and description are [here](https://github.com/der
 If you're after a simpler version of the Pico code to do a simple
 ROM emulation task, that's probably the version you want.
 
+Update Feb'25: I further used this Pico ROM project as the basis for adding a carefully timed non maskable interrupt (NMI) which fires each frame at the point the Spectrum is about to draw the lower border. Not sure how much value there is there, but if anyone's interested the subproject is [here](https://github.com/derekfountain/zx-spectrum-pico-rom/tree/main/firmware_nmi_lower_border).
+
 
 ## Design
 

@@ -52,7 +52,7 @@ With the Spectrum's ROM bug fixed, the operation of the NMI is as follows.
 
 You put an NMI handler in memory somewhere, then set the NMIADD (at 23728)
 system variable to point to it. When the NMI line is pulled low the Z80 will
-jump to adress 0x0066 where the (fixed) handler will save AF and HL on the
+jump to address 0x0066 where the (fixed) handler will save AF and HL on the
 stack, then jump to the address NMIADD points to.
 
 So I put this little program in RAM at 0x8000:
@@ -76,5 +76,7 @@ there's a quick flicker of magenta in the border.
 
 I was quite pleased with getting that to work, but I can't really think what
 to do with it.
+
+Update Feb'25: I did a bit more with this NMI idea, using RP240 PIO to sync it to the 50Hz interrupt. Details [here](https://github.com/derekfountain/zx-spectrum-pico-rom/tree/main/firmware_nmi_lower_border).
 
 [Derek Fountain](https://www.derekfountain.org/zxspectrum.php), December 2024
