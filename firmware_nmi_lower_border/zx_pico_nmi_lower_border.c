@@ -144,7 +144,7 @@ const uint8_t  PICO_RESET_Z80_GP        = 28;
 /* NMI output to Spectrum */
 const uint8_t  NMI_GP                   = 27;
 
-/* INT input from the Spectrum, comes in via the level shifter */
+/* INT input from the Spectrum */
 const uint8_t  INT_GP                   = 15;
 
 const uint32_t DBUS_MASK     = ((uint32_t)1 << D0_GP) |
